@@ -37,6 +37,7 @@ CONTRIBUTING.md        # Resumen rapido para contribuir
 - `docs/README.md`
 - `docs/buenas-practicas.md`
 - `docs/estructura-del-proyecto.md`
+- `docs/generacion-ia.md`
 - `docs/contribucion.md`
 
 ## Ejemplo implementado

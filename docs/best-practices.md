@@ -28,4 +28,5 @@
 - Ejecuta `npm run lint` antes de subir cambios.
 - Valida visualmente la ruta principal despues de cambios de UI.
 - Actualiza documentacion cuando cambie arquitectura o flujo de contribucion.
+- Si el codigo fue generado por IA, revisa `docs/generacion-ia.md` para validar estructura y calidad.
 
