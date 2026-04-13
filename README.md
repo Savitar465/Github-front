@@ -34,11 +34,11 @@ CONTRIBUTING.md        # Resumen rapido para contribuir
 
 ## Documentacion del equipo
 
-- `docs/README.md`
-- `docs/buenas-practicas.md`
-- `docs/estructura-del-proyecto.md`
-- `docs/generacion-ia.md`
-- `docs/contribucion.md`
+- [Buenas prácticas](./docs/best-practices.md)
+- [Estructura del proyecto](./docs/project-structure.md)
+- [Generación de código con IA](./docs/code-rules.md)
+- [Contribución](./docs/contribution.md)
+
 
 ## Ejemplo implementado
 
