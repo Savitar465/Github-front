@@ -1,38 +1,36 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import type { ReactNode } from "react";
-import { Navbar } from "@/components/common/navbar";
-import "./globals.css";
+import { Geist, Geist_Mono, JetBrains_Mono, Roboto } from "next/font/google"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+import { cn } from "@/lib/utils";
+import {Navbar} from "@/components/common/navbar";
+
+const robotoHeading = Roboto({subsets:['latin'],variable:'--font-heading'});
+
+const fontSans = Geist({
   subsets: ["latin"],
-});
+  variable: "--font-sans",
+})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "github-front | Template",
-  description: "Template en Next.js con arquitectura por features y documentacion clara",
-};
+const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'})
 
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: ReactNode;
+                                     children,
+                                   }: Readonly<{
+  children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <Navbar />
-        {children}
+      <html
+          lang="en"
+          suppressHydrationWarning
+          className={cn("antialiased", fontSans.variable, "font-mono", jetbrainsMono.variable, robotoHeading.variable)}
+      >
+      <body>
+      <ThemeProvider>
+          <Navbar />
+          {children}
+      </ThemeProvider>
       </body>
-    </html>
-  );
+      </html>
+  )
 }

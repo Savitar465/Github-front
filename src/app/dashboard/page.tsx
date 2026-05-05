@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
 import { buildPageTitle } from "@/lib/build-page-title";
@@ -36,12 +38,9 @@ export default async function DashboardPage() {
       )}
 
       <div>
-        <Link
-          href="/"
-          className="inline-flex rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium transition hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-        >
-          Volver al inicio
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/">Volver al inicio</Link>
+        </Button>
       </div>
     </PageContainer>
   );

@@ -1,4 +1,7 @@
 import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/common/page-container";
 
 const quickStart = [
@@ -14,56 +17,67 @@ export default function Home() {
       description="Template de inicio con App Router, ruta real /dashboard y estructura por features en src/."
     >
       <header className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Frontend base
-        </p>
-        <p className="max-w-2xl text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Frontend base</p>
+        <p className="max-w-2xl text-muted-foreground">
           Esta home muestra la base del proyecto con carpetas globales para UI,
           hooks, tipos, utilidades y una feature real para dashboard.
         </p>
       </header>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold">Checklist de inicio</h2>
-        <ul className="space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Checklist de inicio</CardTitle>
+          <CardDescription>Una base rapida para empezar a construir sobre este template.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground">
           {quickStart.map((item) => (
             <li key={item} className="list-inside list-disc">
               {item}
             </li>
           ))}
-        </ul>
-      </section>
+          </ul>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <Link
-          href="/dashboard"
-          className="rounded-xl border border-zinc-200 p-4 transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
-        >
-          <h3 className="font-semibold">Dashboard</h3>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Ruta real por feature con _components privados y servicios compartidos.
-          </p>
-        </Link>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Dashboard</CardTitle>
+            <CardDescription>
+              Ruta real por feature con _components privados y servicios compartidos.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Ir al dashboard</Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
-        <a
-          href="https://nextjs.org/docs/app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-xl border border-zinc-200 p-4 transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/60"
-        >
-          <h3 className="font-semibold">Docs Next.js</h3>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Referencia oficial para App Router.
-          </p>
-        </a>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Docs Next.js</CardTitle>
+            <CardDescription>Referencia oficial para App Router.</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button asChild variant="secondary">
+              <a href="https://nextjs.org/docs/app" target="_blank" rel="noopener noreferrer">
+                Abrir documentacion
+              </a>
+            </Button>
+          </CardFooter>
+        </Card>
 
-        <article className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-          <h3 className="font-semibold">Documentacion local</h3>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Revisa `docs/README.md`, `docs/estructura-del-proyecto.md` y
-            `docs/contribucion.md` para el onboarding del equipo.
-          </p>
-        </article>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Documentacion local</CardTitle>
+            <CardDescription>
+              Revisa `docs/README.md`, `docs/estructura-del-proyecto.md` y
+              `docs/contribucion.md` para el onboarding del equipo.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </section>
     </PageContainer>
   );

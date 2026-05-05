@@ -25,6 +25,7 @@ Se debe producir codigo que respete la estructura actual del repo:
 8. **Evitar archivos innecesarios** o capas extra si no aportan valor.
 9. **No duplicar componentes**: extraer cuando una pieza se repite.
 10. **Mantener nombres descriptivos** y consistentes con el dominio.
+11. **Usar componentes shadcn** para toda UI reutilizable o nueva antes de crear componentes Tailwind personalizados; colocar primitives en `src/components/ui/` y componerlas en pantallas o features.
 
 ## Checklist de salida esperada
 
@@ -43,6 +44,7 @@ Antes de entregar codigo, se debe verificar:
 Crea una feature para dashboard en src/app/dashboard.
 Usa Server Components por defecto.
 Extrae componentes privados en _components.
+Reutiliza componentes shadcn desde src/components/ui/ antes de crear UI custom si no existe agregar de los componentes default de shadcn.
 Coloca la obtencion de datos en src/lib/services.
 Si necesitas helpers puros, ponlos en src/utils.
 Actualiza docs si la estructura cambia.

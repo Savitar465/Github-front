@@ -56,6 +56,7 @@ El proyecto ya incluye una ruta real en `src/app/dashboard/page.tsx` que usa:
 - Usa carpetas con prefijo `_` para codigo privado no enrutable.
 - Usa route groups como `(auth)` para organizar flujos sin cambiar la URL.
 - Separa componentes globales en `src/components/` y logica compartida en `src/lib/`.
+- Reserva `src/components/ui/` para primitives y componentes base de shadcn que luego se componen en el resto de la UI.
 
 ## Arquitectura recomendada
 
