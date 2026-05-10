@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js build output
+.next
+out
+
+# Testing
+coverage
+
+# Editor directories
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (use docker env vars instead)
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+CLAUDE.md
+AGENTS.md
+docs/
+
+# Misc
+*.log
+*.md
