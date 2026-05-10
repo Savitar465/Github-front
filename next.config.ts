@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
         source: "/v1/:path*",
         destination: `${process.env.NEXT_PUBLIC_API_URL}/v1/:path*`,
       },
+      {
+        source: "/issues/v1/:path*",
+        destination: `${process.env.NEXT_PUBLIC_ISSUES_API_URL}/v1/:path*`,
+      },
     ];
   },
 };
