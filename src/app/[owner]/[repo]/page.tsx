@@ -1,5 +1,6 @@
 // import { notFound } from 'next/navigation';
 import { RepoHeader, FileTree, BranchSelector, Breadcrumbs } from '@/components/repo';
+import { RepoMetaClient } from '@/components/repo/repo-meta-client';
 import { CreateActions } from '@/components/repo/create-actions';
 import { filesApi } from '@/lib/api';
 import type { DirectoryEntryDTO } from '@/lib/api';
@@ -39,7 +40,10 @@ async function getRepoContents(owner: string, repo: string, ref?: string): Promi
     });
     return response.entries || [];
   } catch (error) {
-    console.error('Error fetching repo contents:', error);
+    // Log error for debugging but fallback to mock data
+    if (error instanceof Error) {
+      console.warn(`Could not fetch ${owner}/${repo} contents from backend: ${error.message}. Using mock data.`);
+    }
     // Retornar mock data en desarrollo
     return mockEntries;
   }
@@ -61,6 +65,11 @@ export default async function RepoPage({ params, searchParams }: PageProps) {
         defaultBranch={branch}
         activeTab="code"
       />
+
+      {/* Repository metadata fetched from repository-service */}
+      <div className="max-w-6xl mx-auto px-6 py-4">
+        <RepoMetaClient owner={owner} repo={repo} />
+      </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Branch selector, breadcrumbs and create button */}

@@ -14,18 +14,25 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) {
-      throw new Error("NEXT_PUBLIC_API_URL is not set");
-    }
+    const filesApi = process.env.NEXT_PUBLIC_API_URL || '/api/files';
+    const repoApi = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
+    const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || repoApi;
+
+    // Ensure no trailing slash
+    const normalize = (u: string) => u.endsWith('/') ? u.slice(0, -1) : u;
+
     return [
       {
-        source: "/v1/:path*",
-        destination: `${apiUrl}/v1/:path*`,
+        source: '/api/files/:path*',
+        destination: `${normalize(filesApi)}/:path*`,
       },
       {
-        source: "/issues/v1/:path*",
-        destination: `${process.env.NEXT_PUBLIC_ISSUES_API_URL}/v1/:path*`,
+        source: '/api/repository/:path*',
+        destination: `${normalize(repoApi)}/:path*`,
+      },
+      {
+        source: '/api/issues/:path*',
+        destination: `${normalize(issuesApi)}/:path*`,
       },
     ];
   },

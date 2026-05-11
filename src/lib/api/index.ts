@@ -11,11 +11,23 @@
 
 import { DefaultApi, Configuration } from './github-files-client/src';
 
-// URL del backend - cambiar según el ambiente
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081/api';
-
 // Token key para localStorage (debe coincidir con auth-context)
 const TOKEN_KEY = 'github_clone_token';
+
+// Función para obtener la URL base del API
+function getApiBaseUrl(): string {
+  const isServer = typeof window === 'undefined';
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || '/api/files';
+
+  // En servidor: si la URL es relativa, usar http://localhost:3000 + ruta relativa
+  // Esto accede al proxy de Next.js en el mismo servidor
+  if (isServer && !envUrl.startsWith('http')) {
+    return `http://localhost:3000${envUrl}`;
+  }
+
+  // En cliente o si ya es URL absoluta: usar tal cual
+  return envUrl;
+}
 
 // Función para obtener el token actual
 function getAccessToken(): string | undefined {
@@ -25,7 +37,7 @@ function getAccessToken(): string | undefined {
 
 // Configuración del cliente con autenticación dinámica
 const configuration = new Configuration({
-  basePath: API_BASE_URL,
+  basePath: getApiBaseUrl(),
   accessToken: async () => {
     const token = getAccessToken();
     return token || '';
@@ -38,7 +50,7 @@ export const filesApi = new DefaultApi(configuration);
 // Factory para crear instancia con token específico (útil para SSR)
 export function createApiClient(token?: string) {
   const config = new Configuration({
-    basePath: API_BASE_URL,
+    basePath: getApiBaseUrl(),
     accessToken: token ? async () => token : undefined,
   });
   return new DefaultApi(config);

@@ -55,3 +55,26 @@ npm run lint
 npm run build
 npm run start
 ```
+
+## Variables de entorno
+
+Para desarrollo local, el frontend usa proxies internos de Next.js para evitar problemas de CORS:
+
+```bash
+NEXT_PUBLIC_API_URL=/api/files
+NEXT_PUBLIC_REPOSITORY_API_URL=/api/repository
+```
+
+Si quieres apuntar directo a los servicios, puedes sobrescribir esos valores con URLs absolutas.
+
+### Local backend example
+
+If you run the backend services locally (recommended ports used by the repo project):
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:8081/api
+NEXT_PUBLIC_REPOSITORY_API_URL=http://localhost:8090
+NEXT_PUBLIC_ISSUES_API_URL=http://localhost:8090
+```
+
+With these absolute URLs the app will call backends directly. Alternatively keep the defaults and use Next.js rewrites (recommended) to proxy requests to the backends.
