@@ -264,3 +264,81 @@ export function getCollaborator(owner: string, repo: string, collaboratorUsernam
     token
   );
 }
+
+// ============ Content API Functions ============
+
+export type UploadFileBody = {
+  content: string; // base64 encoded content
+  message: string;
+  branch?: string;
+};
+
+export type FileEntryDTO = {
+  name: string;
+  path: string;
+  sha: string;
+  type: 'file' | 'dir';
+  size?: number;
+  url?: string;
+};
+
+export type GetRepoContentsBody = {
+  entries: FileEntryDTO[];
+  truncated?: boolean;
+};
+
+export function uploadFile(
+  owner: string,
+  repo: string,
+  path: string,
+  token: string,
+  body: UploadFileBody
+) {
+  return repositoryRequest<FileEntryDTO>(
+    `/v1/repos/${owner}/${repo}/contents?path=${encodeURIComponent(path)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    },
+    token
+  );
+}
+
+export function deleteFile(
+  owner: string,
+  repo: string,
+  path: string,
+  message: string,
+  token: string,
+  branch?: string
+) {
+  const params = new URLSearchParams();
+  params.set('path', path);
+  params.set('message', message);
+  if (branch) params.set('branch', branch);
+
+  return repositoryRequest<void>(
+    `/v1/repos/${owner}/${repo}/contents?${params.toString()}`,
+    { method: 'DELETE' },
+    token
+  );
+}
+
+export function getRepoContents(
+  owner: string,
+  repo: string,
+  token?: string,
+  path?: string,
+  ref?: string
+) {
+  const params = new URLSearchParams();
+  if (path) params.set('path', path);
+  if (ref) params.set('ref', ref);
+  const query = params.toString();
+
+  return repositoryRequest<GetRepoContentsBody>(
+    `/v1/repos/${owner}/${repo}/contents${query ? `?${query}` : ''}`,
+    { method: 'GET' },
+    token
+  );
+}

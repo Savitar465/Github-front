@@ -17,7 +17,7 @@ const TOKEN_KEY = 'github_clone_token';
 // Función para obtener la URL base del API
 function getApiBaseUrl(): string {
   const isServer = typeof window === 'undefined';
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || '/api/files';
+  const envUrl = process.env.NEXT_PUBLIC_FILES_API_URL || 'http://localhost:8084/api';
   const proxyPath = '/api/files';
 
   // En servidor: si la URL es relativa, usar http://localhost:3000 + ruta relativa

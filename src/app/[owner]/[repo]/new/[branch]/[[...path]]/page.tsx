@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { RepoHeader, Breadcrumbs, BranchSelector } from '@/components/repo';
 import { FileEditor } from '@/components/repo/file-editor';
-import { filesApi } from '@/lib/api';
+import { uploadFile } from '@/lib/api/repository-api';
 import { useAuth } from '@/lib/auth';
 
 export default function NewFilePage() {
   const router = useRouter();
   const params = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
 
   const owner = params.owner as string;
   const repo = params.repo as string;
@@ -24,20 +24,19 @@ export default function NewFilePage() {
     path: string;
     message: string;
   }) => {
+    if (!token) {
+      throw new Error('No autenticado');
+    }
+
     const fullPath = data.path ? `${data.path}/${data.filename}` : data.filename;
 
     // Codificar contenido a base64
     const contentBase64 = btoa(unescape(encodeURIComponent(data.content)));
 
-    await filesApi.createFile({
-      owner,
-      repo,
-      filePath: fullPath,
-      createFileBody: {
-        content: contentBase64,
-        message: data.message,
-        branch,
-      },
+    await uploadFile(owner, repo, fullPath, token, {
+      content: contentBase64,
+      message: data.message,
+      branch,
     });
 
     // Navegar al archivo creado

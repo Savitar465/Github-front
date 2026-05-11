@@ -3,8 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { getRepository, type RepositoryDTO, listBranches, listCollaborators, type BranchDTO, type CollaboratorDTO, type ListBranchesBody, type ListCollaboratorsBody } from '@/lib/api/repository-api';
-import { filesApi } from '@/lib/api';
+import { getRepository, type RepositoryDTO, listBranches, listCollaborators, type BranchDTO, type CollaboratorDTO, type ListBranchesBody, type ListCollaboratorsBody, uploadFile } from '@/lib/api/repository-api';
 import type { DirectoryEntryDTO } from '@/lib/api/github-files-client/src/models/DirectoryEntryDTO';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -113,15 +112,15 @@ export function RepoMetaClient({ owner, repo }: Props) {
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
                         try {
+                  if (!token) throw new Error('No autenticado');
                   for (let i = 0; i < files.length; i++) {
                     const f = files[i];
                     const base64 = await readFileAsBase64(f);
                     const content = base64.replace(/^data:.*;base64,/, '');
-                    await filesApi.createFile({
-                      owner,
-                      repo,
-                      filePath: f.name,
-                      createFileBody: { content, message: `Add ${f.name}`, branch: data.defaultBranch ?? 'main' },
+                    await uploadFile(owner, repo, f.name, token, {
+                      content,
+                      message: `Add ${f.name}`,
+                      branch: data.defaultBranch ?? 'main',
                     });
                   }
                   router.refresh();
@@ -151,15 +150,15 @@ export function RepoMetaClient({ owner, repo }: Props) {
           const files = e.target.files;
           if (!files || files.length === 0) return;
           try {
+            if (!token) throw new Error('No autenticado');
             for (let i = 0; i < files.length; i++) {
               const f = files[i];
               const base64 = await readFileAsBase64(f);
               const content = base64.replace(/^data:.*;base64,/, '');
-              await filesApi.createFile({
-                owner,
-                repo,
-                filePath: f.name,
-                createFileBody: { content, message: `Add ${f.name}`, branch: data.defaultBranch ?? 'main' },
+              await uploadFile(owner, repo, f.name, token, {
+                content,
+                message: `Add ${f.name}`,
+                branch: data.defaultBranch ?? 'main',
               });
             }
             router.refresh();
@@ -360,7 +359,7 @@ function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded }: { o
         let resp = await fetch(proxyUrl, { method: 'GET', headers });
 
         if (resp.status === 404) {
-          const backendUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
+          const backendUrl = `${process.env.NEXT_PUBLIC_REPOSITORY_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
           resp = await fetch(backendUrl, { method: 'GET', headers });
         }
 
