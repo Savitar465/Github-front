@@ -4,12 +4,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { LogOut, Book, Menu, X } from 'lucide-react';
+import { LogOut, Book, Menu, X, Building, Disc } from 'lucide-react';
 import { GithubIcon } from '@/components/icons/github-icon';
 import { useState } from 'react';
 
 const publicLinks = [
   { href: '/repos', label: 'Repositorios', icon: Book },
+];
+const privateLinks = [
+  { href: '/orgs', label: 'Organizaciónes', icon: Building },
+  { href: '/issues', label: 'Issues', icon: Disc },
 ];
 
 export function Navbar() {
@@ -34,6 +38,17 @@ export function Navbar() {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-1">
           {publicLinks.map((link) => {
+            const Icon = link.icon;
+            return (
+              <Button key={link.href} asChild variant="ghost" size="sm">
+                <Link href={link.href} className="gap-2">
+                  <Icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              </Button>
+            );
+          })}
+          {isAuthenticated && user && privateLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Button key={link.href} asChild variant="ghost" size="sm">
@@ -97,6 +112,20 @@ export function Navbar() {
         <div className="md:hidden border-t bg-background">
           <div className="px-4 py-3 space-y-2">
             {publicLinks.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+            {isAuthenticated && user && privateLinks.map((link) => {
               const Icon = link.icon;
               return (
                 <Link
