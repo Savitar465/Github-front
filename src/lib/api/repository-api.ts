@@ -228,6 +228,25 @@ export function getBranch(owner: string, repo: string, branch: string, token?: s
   );
 }
 
+export type CreateBranchBody = {
+  name: string;
+  source?: string; // branch or commit sha to branch from (defaults to defaultBranch)
+};
+
+// Create a new branch from a source (branch name or commit sha)
+export function createBranch(owner: string, repo: string, token: string, body: CreateBranchBody) {
+  return repositoryRequest<BranchDTO>(
+    `/v1/repos/${owner}/${repo}/branches`,
+    { method: 'POST', body: JSON.stringify(body) },
+    token
+  );
+}
+
+// Delete a branch
+export function deleteBranch(owner: string, repo: string, branch: string, token: string) {
+  return repositoryRequest<void>(`/v1/repos/${owner}/${repo}/branches/${encodeURIComponent(branch)}`, { method: 'DELETE' }, token);
+}
+
 // ============ Collaborator API Functions ============
 
 export function listCollaborators(owner: string, repo: string, token?: string) {

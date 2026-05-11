@@ -53,7 +53,7 @@ export function ReposClient() {
       setError(null);
 
       try {
-        const response = await listRepositories(token, { page: 1, perPage: 100 });
+        const response = await listRepositories(token!, { page: 1, perPage: 100 });
 
         if (cancelled) {
           return;

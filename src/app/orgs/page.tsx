@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
 import { buildPageTitle } from "@/lib/build-page-title";
 import { getMyOrganizations } from "@/lib/services/organizations";
+import type { OrganizationDTO } from '@/types/organization';
 import { OrgsManager } from "./_components/orgs-manager";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function OrgsPage() {
-  let orgs = [];
+  let orgs: OrganizationDTO[] = [];
   let fetchError: string | null = null;
 
   try {

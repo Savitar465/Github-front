@@ -44,7 +44,7 @@ export function BranchSelector({
           <div className="absolute top-full left-0 mt-1 z-20 w-64 bg-background border rounded-lg shadow-lg overflow-hidden">
             <div className="p-2 border-b">
               <p className="text-xs font-medium text-muted-foreground">
-                Cambiar branch
+                Cambiar rama
               </p>
             </div>
             <div className="max-h-64 overflow-y-auto">

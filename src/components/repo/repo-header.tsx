@@ -8,6 +8,9 @@ type RepoHeaderProps = {
   description?: string;
   defaultBranch?: string;
   activeTab?: 'code' | 'commits' | 'compare' | 'pulls';
+  starsCount?: number;
+  forksCount?: number;
+  watchersCount?: number;
 };
 
 export function RepoHeader({
@@ -22,7 +25,7 @@ export function RepoHeader({
 }: RepoHeaderProps) {
   const tabs = [
     { id: 'code', label: 'Código', icon: Code, href: `/${owner}/${repo}` },
-    { id: 'pulls', label: 'Pull Requests', icon: GitPullRequest, href: `/${owner}/${repo}/pulls` },
+    { id: 'pulls', label: 'Solicitudes de extracción', icon: GitPullRequest, href: `/${owner}/${repo}/pulls` },
     { id: 'commits', label: 'Commits', icon: History, href: `/${owner}/${repo}/commits` },
     { id: 'compare', label: 'Comparar', icon: GitCompare, href: `/${owner}/${repo}/compare` },
   ] as const;
@@ -37,7 +40,7 @@ export function RepoHeader({
               <Link href={`/${owner}`} className="text-blue-600 hover:underline">{owner}</Link>
               <span className="text-muted-foreground">/</span>
               <Link href={`/${owner}/${repo}`} className="text-foreground hover:underline">{repo}</Link>
-              <span className="inline-block px-3 py-1 text-xs font-semibold bg-muted text-muted-foreground rounded-full ml-2">Public</span>
+              <span className="inline-block px-3 py-1 text-xs font-semibold bg-muted text-muted-foreground rounded-full ml-2">Público</span>
             </h1>
             {description && <p className="mt-2 text-sm text-muted-foreground">{description}</p>}
           </div>
@@ -45,17 +48,17 @@ export function RepoHeader({
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="outline" size="sm" className="gap-2">
               <Eye className="h-4 w-4" />
-              <span>Watch</span>
+              <span>Seguir</span>
               <span className="ml-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium">{watchersCount}</span>
             </Button>
             <Button variant="outline" size="sm" className="gap-2">
               <Star className="h-4 w-4" />
-              <span>Star</span>
+              <span>Destacar</span>
               <span className="ml-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium">{starsCount}</span>
             </Button>
             <Button variant="outline" size="sm" className="gap-2">
               <GitFork className="h-4 w-4" />
-              <span>Fork</span>
+              <span>Bifurcar</span>
               <span className="ml-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium">{forksCount}</span>
             </Button>
           </div>

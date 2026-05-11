@@ -16,7 +16,7 @@ export default function UserDetailPage({ params }: { params: { id: string } }) {
     async function load() {
       setLoading(true);
       try {
-        const u = await getUser(id, token);
+        const u = await getUser(id, token!);
         if (!cancelled) setUser(u);
       } catch {
         // fallback handled

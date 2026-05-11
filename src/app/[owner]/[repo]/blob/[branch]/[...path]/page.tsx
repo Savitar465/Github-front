@@ -44,8 +44,8 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export default async function BlobPage({ params }: PageProps) {
-  const { owner, repo, branch, path } = await params;
+export default async function BlobPage({ params }: { params: { owner: string; repo: string; branch: string; path: string[] } }) {
+  const { owner, repo, branch, path } = params;
   const pathString = path.join('/');
   const filename = path[path.length - 1];
 

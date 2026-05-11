@@ -8,6 +8,7 @@ import { filesApi } from '@/lib/api';
 import type { DirectoryEntryDTO } from '@/lib/api/github-files-client/src/models/DirectoryEntryDTO';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { createBranch, deleteBranch } from '@/lib/api/repository-api';
 
 type Props = { owner: string; repo: string };
 
@@ -16,6 +17,11 @@ export function RepoMetaClient({ owner, repo }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<RepositoryDTO | null>(null);
+  const [branchesList, setBranchesList] = useState<BranchDTO[]>([]);
+  const [showNewBranch, setShowNewBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [newBranchSource, setNewBranchSource] = useState<string | undefined>(undefined);
+  const [loadedEntries, setLoadedEntries] = useState<DirectoryEntryDTO[] | null>(null);
 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -43,14 +49,26 @@ export function RepoMetaClient({ owner, repo }: Props) {
       try {
         if (!isAuthenticated || !token) {
           const resp = await fetch(`/api/repository/v1/repos/${owner}/${repo}`, { method: 'GET' });
-          if (!resp.ok) throw new Error(`Status ${resp.status}`);
+          if (!resp.ok) throw new Error(`Estado ${resp.status}`);
           const json = (await resp.json()) as RepositoryDTO;
-          if (!cancelled) setData(json);
+            if (!cancelled) {
+              setData(json);
+              try {
+                const bRes = await listBranches(owner, repo, undefined).catch(() => ({ branches: [] } as ListBranchesBody));
+                if (!cancelled) setBranchesList(bRes.branches || []);
+              } catch {}
+            }
           return;
         }
 
         const repoData = await getRepository(owner, repo, token);
-        if (!cancelled) setData(repoData);
+          if (!cancelled) {
+            setData(repoData);
+            try {
+              const bRes = await listBranches(owner, repo, token).catch(() => ({ branches: [] } as ListBranchesBody));
+              if (!cancelled) setBranchesList(bRes.branches || []);
+            } catch {}
+          }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Error cargando repositorio');
       } finally {
@@ -76,6 +94,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
 
   const topics = (data as unknown as { topics?: string[] }).topics ?? [];
   const isEmpty = !data.defaultBranch;
+  const showQuickSetup = (!branchesList || branchesList.length === 0) && (!loadedEntries || loadedEntries.length === 0);
 
   if (isEmpty) {
     return (
@@ -83,8 +102,8 @@ export function RepoMetaClient({ owner, repo }: Props) {
         <CardContent className="p-6 text-center">
           <div className="flex flex-col items-center gap-4">
             <div className="w-16 h-16 rounded-md bg-slate-100 flex items-center justify-center text-2xl">📦</div>
-            <h2 className="text-xl font-semibold">This repository is empty</h2>
-            <p className="text-sm text-muted-foreground">Quick setup &mdash; if you&apos;ve done this before you can clone the repository and push or create a new file below.</p>
+            <h2 className="text-xl font-semibold">Este repositorio está vacío</h2>
+            <p className="text-sm text-muted-foreground">Configuración rápida: si ya has hecho esto antes, puedes clonar el repositorio y hacer push, o crear un nuevo archivo abajo.</p>
 
             <div className="mt-4 flex gap-2">
               <Button size="sm" asChild>
@@ -173,7 +192,41 @@ export function RepoMetaClient({ owner, repo }: Props) {
             </div>
 
             <div className="mt-4">
-              <FileBrowser owner={owner} repo={repo} defaultBranch={data.defaultBranch || 'main'} token={token || undefined} />
+              {showQuickSetup ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <div className="flex flex-col items-start gap-4">
+                      <h2 className="text-2xl font-semibold">Configuración rápida: si ya has hecho esto antes</h2>
+                      <div className="w-full p-4 rounded bg-slate-50/5">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Button size="sm">Abrir en Desktop</Button>
+                          <Button size="sm" variant="outline">HTTPS</Button>
+                          <Button size="sm" variant="outline">SSH</Button>
+                          <div className="ml-4 text-sm text-muted-foreground">git@github.com:{owner}/{repo}.git</div>
+                        </div>
+                        <div className="mt-4 bg-slate-800 p-3 rounded text-sm text-white">
+                          <pre className="whitespace-pre-wrap">{`echo "# ${repo}" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin git@github.com:${owner}/${repo}.git
+git push -u origin main`}</pre>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Empieza creando un nuevo archivo o subiendo un archivo existente.</p>
+                      <div className="flex gap-2">
+                        <Button size="sm" asChild>
+                          <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Crear archivo</a>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Subir archivos</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <FileBrowser owner={owner} repo={repo} defaultBranch={data.defaultBranch || 'main'} token={token || undefined} onEntriesLoaded={setLoadedEntries} />
+              )}
             </div>
           </div>
         </div>
@@ -183,14 +236,14 @@ export function RepoMetaClient({ owner, repo }: Props) {
           <Card>
             <CardContent className="p-4 space-y-4">
               <div>
-                <h4 className="text-sm font-semibold mb-2">About</h4>
+                <h4 className="text-sm font-semibold mb-2">Acerca de</h4>
                 {data.description && <p className="text-sm text-muted-foreground">{data.description}</p>}
               </div>
 
               {/* Language */}
               {data.language && (
                 <div className="text-sm text-muted-foreground">
-                  Language: <span className="font-medium">{data.language}</span>
+                  Lenguaje: <span className="font-medium">{data.language}</span>
                 </div>
               )}
 
@@ -208,27 +261,41 @@ export function RepoMetaClient({ owner, repo }: Props) {
 
 function BranchSelector({ owner, repo, defaultBranch, token }: { owner: string; repo: string; defaultBranch: string; token?: string }) {
   const [branches, setBranches] = useState<string[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
   const [selected, setSelected] = useState(defaultBranch);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      setLoadingBranches(true);
       try {
         const res = await listBranches(owner, repo, token).catch(() => ({ branches: [] } as ListBranchesBody));
-        if (!cancelled) setBranches((res.branches || []).map((b: BranchDTO) => b.name));
+        if (!cancelled) {
+          const branchNames = (res.branches || []).map((b: BranchDTO) => b.name);
+          setBranches(branchNames);
+          if (branchNames.length > 0) {
+            setSelected((current) => (branchNames.includes(current) ? current : branchNames[0]));
+          }
+        }
       } catch {
         if (!cancelled) setBranches([]);
+      } finally {
+        if (!cancelled) setLoadingBranches(false);
       }
     }
     load();
     return () => { cancelled = true; };
   }, [owner, repo, token]);
 
+  if (loadingBranches || branches.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex items-center gap-3">
-      <label className="text-sm font-medium text-muted-foreground">Branch:</label>
+      <label className="text-sm font-medium text-muted-foreground">Rama:</label>
       <select value={selected} onChange={(e) => setSelected(e.target.value)} className="rounded-md border px-3 py-1 text-sm">
-        {branches.length === 0 ? <option>{defaultBranch}</option> : branches.map((b) => <option key={b} value={b}>{b}</option>)}
+        {branches.map((b) => <option key={b} value={b}>{b}</option>)}
       </select>
     </div>
   );
@@ -255,7 +322,7 @@ function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: strin
 
   return (
     <div>
-      <h5 className="text-sm font-semibold mb-3">Collaborators</h5>
+      <h5 className="text-sm font-semibold mb-3">Colaboradores</h5>
       <div className="space-y-2">
         {show.map((c) => (
           <div key={c.username} className="flex items-center gap-2">
@@ -276,7 +343,7 @@ function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: strin
   );
 }
 
-function FileBrowser({ owner, repo, defaultBranch, token }: { owner: string; repo: string; defaultBranch: string; token?: string }) {
+function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded }: { owner: string; repo: string; defaultBranch: string; token?: string; onEntriesLoaded?: (entries: DirectoryEntryDTO[] | null) => void }) {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<DirectoryEntryDTO[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -304,9 +371,13 @@ function FileBrowser({ owner, repo, defaultBranch, token }: { owner: string; rep
         }
 
         const json = await resp.json();
-        if (!cancelled) setEntries(json.contents || null);
+        if (!cancelled) {
+          const contents = json.contents || null;
+          setEntries(contents);
+          if (onEntriesLoaded) onEntriesLoaded(contents);
+        }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Error loading content');
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Error cargando el contenido');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -315,17 +386,17 @@ function FileBrowser({ owner, repo, defaultBranch, token }: { owner: string; rep
     return () => { cancelled = true; };
   }, [owner, repo, defaultBranch, token]);
 
-  if (loading) return <div className="mt-4 text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="mt-4 text-sm text-muted-foreground">Cargando...</div>;
   if (error) return <div className="mt-4 text-sm text-destructive">{error}</div>;
 
   if (!entries || entries.length === 0) {
     return (
       <div className="mt-6 p-6 border rounded-md bg-white">
-        <h2 className="text-lg font-semibold">This repository is empty</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Create a new file, upload files, or import code from another repository.</p>
+        <h2 className="text-lg font-semibold">Este repositorio está vacío</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Crea un nuevo archivo, sube archivos o importa código desde otro repositorio.</p>
         <div className="mt-4 flex gap-2">
-          <Button size="sm">Create new file</Button>
-          <Button variant="outline" size="sm">Upload files</Button>
+          <Button size="sm">Crear archivo</Button>
+          <Button variant="outline" size="sm">Subir archivos</Button>
         </div>
       </div>
     );
