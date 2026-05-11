@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
-import { LogOut, Book, Menu, X } from 'lucide-react';
+import { LogOut, Book, Menu, X, Users } from 'lucide-react';
 import { GithubIcon } from '@/components/icons/github-icon';
 import { useState } from 'react';
 
 const publicLinks = [
   { href: '/repos', label: 'Repositorios', icon: Book },
+  { href: '/users', label: 'Usuarios', icon: Users },
 ];
 
 export function Navbar() {

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { GitBranch, Star, GitFork, Eye, Code, History, GitCompare, Settings } from 'lucide-react';
+import { GitBranch, Star, GitFork, Eye, Code, History, GitCompare, Settings, GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type RepoHeaderProps = {
@@ -7,7 +7,7 @@ type RepoHeaderProps = {
   repo: string;
   description?: string;
   defaultBranch?: string;
-  activeTab?: 'code' | 'commits' | 'compare';
+  activeTab?: 'code' | 'commits' | 'compare' | 'pulls';
 };
 
 export function RepoHeader({
@@ -19,6 +19,7 @@ export function RepoHeader({
 }: RepoHeaderProps) {
   const tabs = [
     { id: 'code', label: 'Código', icon: Code, href: `/${owner}/${repo}` },
+    { id: 'pulls', label: 'Pull Requests', icon: GitPullRequest, href: `/${owner}/${repo}/pulls` },
     { id: 'commits', label: 'Commits', icon: History, href: `/${owner}/${repo}/commits` },
     { id: 'compare', label: 'Comparar', icon: GitCompare, href: `/${owner}/${repo}/compare` },
   ] as const;
