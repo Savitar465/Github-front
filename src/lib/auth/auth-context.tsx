@@ -30,11 +30,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const TOKEN_KEY = 'github_clone_token';
 const USER_KEY = 'github_clone_user';
 
+// URL del microservicio de usuarios
+const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081/v1';
+
 // Configuración de Keycloak OIDC
 const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8180';
 const KEYCLOAK_REALM = process.env.NEXT_PUBLIC_KEYCLOAK_REALM || 'github-files';
 const KEYCLOAK_CLIENT_ID = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'github-front';
 const USE_KEYCLOAK = process.env.NEXT_PUBLIC_USE_KEYCLOAK === 'true';
+const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
 
 // Crear UserManager solo si estamos en el cliente
 let userManager: UserManager | null = null;
@@ -181,18 +185,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isLoading: false,
           isAuthenticated: true,
         });
-      } else {
-        // Mock login para desarrollo
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      } else if (USE_MOCK_AUTH) {
+        // Mock login para desarrollo (demo/demo)
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
         if (username === 'demo' && password === 'demo') {
           const mockToken = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.mock_token_for_dev';
           const mockUser: User = {
             id: '1',
-            username: 'davichox',
-            email: 'davi@example.com',
-            name: 'David Chavez',
-            avatarUrl: undefined,
+            username: 'demo',
+            email: 'demo@example.com',
+            name: 'Demo User',
           };
 
           localStorage.setItem(TOKEN_KEY, mockToken);
@@ -205,8 +208,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
           });
         } else {
+          throw new Error('Credenciales inválidas. Usa demo/demo');
+        }
+      } else {
+        // Login via Users microservice
+        const response = await fetch(`${USERS_API_URL}/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
           throw new Error('Credenciales inválidas');
         }
+
+        const data = await response.json();
+
+        // Decodificar el access_token para obtener info del usuario
+        const tokenParts = data.access_token.split('.');
+        const payload = JSON.parse(atob(tokenParts[1]));
+
+        const user: User = {
+          id: payload.sub,
+          username: payload.preferred_username || payload.sub,
+          email: payload.email || '',
+          name: payload.name || payload.preferred_username || 'Usuario',
+        };
+
+        localStorage.setItem(TOKEN_KEY, data.access_token);
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+        setState({
+          user,
+          token: data.access_token,
+          isLoading: false,
+          isAuthenticated: true,
+        });
       }
     } catch (error) {
       setState({ user: null, token: null, isLoading: false, isAuthenticated: false });

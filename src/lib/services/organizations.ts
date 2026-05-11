@@ -1,10 +1,14 @@
 import type { CreateOrganizationPayload, OrganizationDTO } from "@/types/organization";
 
-const API_BASE = typeof window === "undefined" ? (process.env.NEXT_PUBLIC_API_URL ?? "") : "";
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN ?? "";
+const API_BASE = process.env.NEXT_PUBLIC_ORG_API_URL ?? "http://localhost:8083";
+
+function getToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("github_clone_token") || "";
+}
 
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  return { Authorization: `Bearer ${API_TOKEN}`, ...extra };
+  return { Authorization: `Bearer ${getToken()}`, ...extra };
 }
 
 export async function getMyOrganizations(): Promise<OrganizationDTO[]> {
