@@ -19,44 +19,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Mock commits
-const mockCommits: CommitDTO[] = [
-  {
-    sha: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
-    message: 'feat: Agregar explorador de archivos con navegación\n\nImplementa el componente FileTree con soporte para navegación entre carpetas.',
-    author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-    committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-    parents: [{ sha: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1' }],
-  },
-  {
-    sha: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
-    message: 'feat: Implementar syntax highlighting para visor de código',
-    author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T18:45:00Z' },
-    committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T18:45:00Z' },
-    parents: [{ sha: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2' }],
-  },
-  {
-    sha: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2',
-    message: 'fix: Corregir rutas de navegación en breadcrumbs',
-    author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T10:20:00Z' },
-    committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T10:20:00Z' },
-    parents: [{ sha: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3' }],
-  },
-  {
-    sha: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3',
-    message: 'refactor: Reorganizar estructura de componentes',
-    author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-14T16:00:00Z' },
-    committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-14T16:00:00Z' },
-    parents: [{ sha: 'e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4' }],
-  },
-  {
-    sha: 'e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4',
-    message: 'docs: Actualizar documentación de instalación',
-    author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-13T09:15:00Z' },
-    committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-13T09:15:00Z' },
-    parents: [],
-  },
-];
+// Removed mock commits — rely on backend. Fallbacks return empty commit lists.
 
 async function getCommits(
   owner: string,
@@ -78,7 +41,7 @@ async function getCommits(
     };
   } catch (error) {
     console.error('Error fetching commits:', error);
-    return { commits: mockCommits, totalPages: 1 };
+    return { commits: [], totalPages: 1 };
   }
 }
 

@@ -1,16 +1,23 @@
 function getRepositoryApiUrl(): string {
   const isServer = typeof window === 'undefined';
   const envUrl = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
+  const proxyPath = '/api/repository';
 
-  // En servidor: si la URL es relativa, usar http://localhost:3000 + ruta relativa
-  // Esto accede al proxy de Next.js en el mismo servidor
-  if (isServer && !envUrl.startsWith('http')) {
-    return `http://localhost:3000${envUrl}`;
+  // On server: if envUrl is relative use the Next.js proxy on localhost:3000,
+  // otherwise use the absolute backend URL configured in env.
+  if (isServer) {
+    if (!envUrl.startsWith('http')) {
+      return `http://localhost:3000${envUrl}`;
+    }
+    return envUrl;
   }
 
-  // En cliente o si ya es URL absoluta: usar tal cual
-  return envUrl;
+  // On client (browser): always use the same-origin Next.js proxy path to avoid CORS.
+  // If the env var contains a relative path, prefer it; otherwise fall back to the proxyPath.
+  return envUrl.startsWith('/') ? envUrl : proxyPath;
 }
+
+// ============ Types ============
 
 export type RepositoryVisibility = 'public' | 'private';
 
@@ -63,6 +70,36 @@ export type ForkRepositoryBody = {
   targetOwner?: string;
 };
 
+export type BranchDTO = {
+  name: string;
+  isDefault: boolean;
+  commitSha: string;
+};
+
+export type ListBranchesBody = {
+  branches: BranchDTO[];
+};
+
+export type CollaboratorRole = 'read' | 'write' | 'admin' | 'maintain';
+
+export type CollaboratorDTO = {
+  userId: string;
+  username: string;
+  role: CollaboratorRole;
+  avatarUrl?: string;
+  addedAt: string;
+};
+
+export type ListCollaboratorsBody = {
+  collaborators: CollaboratorDTO[];
+};
+
+export type ListRepositoryForksBody = {
+  repositories: RepositoryDTO[];
+};
+
+// ============ HTTP Request Helper ============
+
 async function repositoryRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -104,6 +141,8 @@ async function repositoryRequest<T>(
   return (await response.json()) as T;
 }
 
+// ============ Repository API Functions ============
+
 export function listRepositories(
   token: string,
   params: { visibility?: RepositoryVisibility; page?: number; perPage?: number } = {}
@@ -122,7 +161,7 @@ export function listRepositories(
   );
 }
 
-export function getRepository(owner: string, repo: string, token: string) {
+export function getRepository(owner: string, repo: string, token?: string) {
   return repositoryRequest<RepositoryDTO>(`/v1/repos/${owner}/${repo}`, { method: 'GET' }, token);
 }
 
@@ -159,6 +198,50 @@ export function forkRepository(owner: string, repo: string, token: string, body:
       method: 'POST',
       body: JSON.stringify(body),
     },
+    token
+  );
+}
+
+export function listRepositoryForks(owner: string, repo: string, token?: string) {
+  return repositoryRequest<ListRepositoryForksBody>(
+    `/v1/repos/${owner}/${repo}/forks`,
+    { method: 'GET' },
+    token
+  );
+}
+
+// ============ Branch API Functions ============
+
+export function listBranches(owner: string, repo: string, token?: string) {
+  return repositoryRequest<ListBranchesBody>(
+    `/v1/repos/${owner}/${repo}/branches`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export function getBranch(owner: string, repo: string, branch: string, token?: string) {
+  return repositoryRequest<BranchDTO>(
+    `/v1/repos/${owner}/${repo}/branches/${branch}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+// ============ Collaborator API Functions ============
+
+export function listCollaborators(owner: string, repo: string, token?: string) {
+  return repositoryRequest<ListCollaboratorsBody>(
+    `/v1/repos/${owner}/${repo}/collaborators`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export function getCollaborator(owner: string, repo: string, collaboratorUsername: string, token?: string) {
+  return repositoryRequest<CollaboratorDTO>(
+    `/v1/repos/${owner}/${repo}/collaborators/${collaboratorUsername}`,
+    { method: 'GET' },
     token
   );
 }

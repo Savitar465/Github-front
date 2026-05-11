@@ -4,117 +4,7 @@ import { filesApi } from '@/lib/api';
 import { buildPageTitle } from '@/lib/build-page-title';
 import { Metadata } from 'next';
 
-type PageProps = {
-  params: Promise<{ owner: string; repo: string; branch: string; path: string[] }>;
-};
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { owner, repo, path } = await params;
-  const filename = path[path.length - 1];
-  return {
-    title: buildPageTitle(`${filename} - ${owner}/${repo}`),
-  };
-}
-
-// Mock file content
-const mockFiles: Record<string, { content: string; size: number }> = {
-  'README.md': {
-    content: `# GitHub Clone
-
-Este es un proyecto de ejemplo para la materia de Arquitectura en la Nube y Microservicios.
-
-## Stack
-
-- **Backend**: Java 21 + Spring Boot 3
-- **Frontend**: Next.js 16 + React 19 + TypeScript
-- **API Definition**: Smithy
-
-## Estructura
-
-\`\`\`
-├── github-files-ms/    # Backend microservice
-├── github-front/       # Frontend Next.js
-└── docs/               # Documentation
-\`\`\`
-
-## Desarrollo Local
-
-\`\`\`bash
-# Backend
-cd github-files-ms
-./mvnw spring-boot:run
-
-# Frontend
-cd github-front
-npm run dev
-\`\`\`
-`,
-    size: 512,
-  },
-  'package.json': {
-    content: `{
-  "name": "github-front",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.2.3",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
-  }
-}`,
-    size: 298,
-  },
-  'tsconfig.json': {
-    content: `{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
-}`,
-    size: 389,
-  },
-  'index.ts': {
-    content: `import { DefaultApi, Configuration } from './api';
-
-const config = new Configuration({
-  basePath: process.env.API_URL || 'http://localhost:8080',
-});
-
-export const api = new DefaultApi(config);
-
-export async function getRepositoryContents(owner: string, repo: string) {
-  const response = await api.getRepositoryContents({ owner, repo });
-  return response.entries || [];
-}
-
-export async function getFileContent(owner: string, repo: string, path: string) {
-  const response = await api.getFileContent({ owner, repo, filePath: path });
-  return response.file;
-}
-`,
-    size: 456,
-  },
-};
-
+// Removed embedded mock file contents — file content will be loaded from API at runtime.
 async function getFileContent(
   owner: string,
   repo: string,
@@ -141,13 +31,8 @@ async function getFileContent(
     return null;
   } catch (error) {
     console.error('Error fetching file:', error);
-    // Mock data para desarrollo
-    const filename = path.split('/').pop() || '';
-    const mockFile = mockFiles[filename];
-    if (mockFile) {
-      return { ...mockFile, sha: 'mock-sha' };
-    }
-    return { content: '// File not found', size: 0, sha: 'mock-sha' };
+    // If backend fails, return null so the UI shows an empty/not-found state.
+    return null;
   }
 }
 
