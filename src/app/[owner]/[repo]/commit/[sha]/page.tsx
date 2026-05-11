@@ -20,81 +20,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Mock commit detail
-const mockCommit: CommitDTO = {
-  sha: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
-  message: 'feat: Agregar explorador de archivos con navegación\n\nImplementa el componente FileTree con soporte para navegación entre carpetas.\n\n- Agrega iconos para diferentes tipos de archivo\n- Implementa ordenamiento (carpetas primero)\n- Agrega navegación con breadcrumbs',
-  author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-  committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-  parents: [{ sha: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1', url: '/commit/b2c3d4...' }],
-};
-
-const mockFiles: CommitFile[] = [
-  {
-    filename: 'src/components/repo/file-tree.tsx',
-    status: 'added',
-    additions: 45,
-    deletions: 0,
-    changes: 45,
-    patch: `@@ -0,0 +1,45 @@
-+import Link from 'next/link';
-+import { FileIcon } from './file-icon';
-+
-+export function FileTree({ entries, owner, repo }) {
-+  const sorted = [...entries].sort((a, b) => {
-+    if (a.type === 'dir' && b.type !== 'dir') return -1;
-+    return a.name.localeCompare(b.name);
-+  });
-+
-+  return (
-+    <div className="border rounded-lg">
-+      {sorted.map((entry) => (
-+        <FileRow key={entry.sha} entry={entry} />
-+      ))}
-+    </div>
-+  );
-+}`,
-  },
-  {
-    filename: 'src/components/repo/file-icon.tsx',
-    status: 'added',
-    additions: 32,
-    deletions: 0,
-    changes: 32,
-    patch: `@@ -0,0 +1,32 @@
-+import { File, Folder } from 'lucide-react';
-+
-+export function FileIcon({ name, type }) {
-+  if (type === 'dir') {
-+    return <Folder className="text-blue-500" />;
-+  }
-+  return <File className="text-muted-foreground" />;
-+}`,
-  },
-  {
-    filename: 'src/components/repo/breadcrumbs.tsx',
-    status: 'modified',
-    additions: 12,
-    deletions: 5,
-    changes: 17,
-    patch: `@@ -10,8 +10,15 @@ export function Breadcrumbs({ owner, repo, path }) {
-   return (
-     <nav className="flex items-center gap-1">
--      <Link href={\`/\${owner}/\${repo}\`}>
-+      <Link
-+        href={\`/\${owner}/\${repo}\`}
-+        className="font-semibold hover:underline"
-+      >
-         {repo}
-       </Link>
-+      {segments.map((segment, i) => (
-+        <Segment key={i} segment={segment} />
-+      ))}
-     </nav>
-   );
- }`,
-  },
-];
+// Removed mock commit/sample files — rely on backend. If API fails, return minimal safe data.
 
 async function getCommitDetail(
   owner: string,
@@ -111,7 +37,15 @@ async function getCommitDetail(
     };
   } catch (error) {
     console.error('Error fetching commit:', error);
-    return { commit: mockCommit, files: mockFiles };
+    // Return a minimal commit object to keep the page stable, with no files.
+    const fallbackCommit: CommitDTO = {
+      sha: sha,
+      message: '',
+      author: { name: 'Unknown', email: '', date: new Date().toISOString() },
+      committer: { name: 'Unknown', email: '', date: new Date().toISOString() },
+      parents: [],
+    };
+    return { commit: fallbackCommit, files: [] };
   }
 }
 

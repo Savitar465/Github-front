@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/common/page-container";
 import { buildPageTitle } from "@/lib/build-page-title";
 import { getOrgTeams } from "@/lib/services/teams";
 import { TeamsManager } from "./_components/teams-manager";
+import type { TeamDTO } from '@/types/team';
 
 type Props = {
   params: Promise<{ orgName: string }>;
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function OrgTeamsPage({ params }: Props) {
   const { orgName } = await params;
 
-  let teams = [];
+  let teams: TeamDTO[] = [];
   let fetchError: string | null = null;
 
   try {

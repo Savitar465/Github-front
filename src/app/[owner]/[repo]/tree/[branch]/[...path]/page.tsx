@@ -17,19 +17,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Mock data
-const mockEntries: Record<string, DirectoryEntryDTO[]> = {
-  src: [
-    { name: 'components', path: 'src/components', sha: '10', type: 'dir' },
-    { name: 'lib', path: 'src/lib', sha: '11', type: 'dir' },
-    { name: 'app', path: 'src/app', sha: '12', type: 'dir' },
-    { name: 'index.ts', path: 'src/index.ts', sha: '13', type: 'file', size: 156 },
-  ],
-  docs: [
-    { name: 'api.md', path: 'docs/api.md', sha: '20', type: 'file', size: 2340 },
-    { name: 'getting-started.md', path: 'docs/getting-started.md', sha: '21', type: 'file', size: 1890 },
-  ],
-};
+// Removed local mock entries for directories; rely on repository API. Fallbacks return empty lists.
 
 async function getDirectoryContents(
   owner: string,
@@ -47,9 +35,8 @@ async function getDirectoryContents(
     return response.entries || [];
   } catch (error) {
     console.error('Error fetching directory:', error);
-    // Mock data para desarrollo
-    const key = path.split('/').pop() || '';
-    return mockEntries[key] || [];
+    // If backend fails, return empty directory list.
+    return [];
   }
 }
 

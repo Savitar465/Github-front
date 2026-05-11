@@ -18,15 +18,20 @@ const TOKEN_KEY = 'github_clone_token';
 function getApiBaseUrl(): string {
   const isServer = typeof window === 'undefined';
   const envUrl = process.env.NEXT_PUBLIC_API_URL || '/api/files';
+  const proxyPath = '/api/files';
 
   // En servidor: si la URL es relativa, usar http://localhost:3000 + ruta relativa
-  // Esto accede al proxy de Next.js en el mismo servidor
-  if (isServer && !envUrl.startsWith('http')) {
-    return `http://localhost:3000${envUrl}`;
+  // Esto accede al proxy de Next.js en el mismo servidor. Si se configuró una URL
+  // absoluta en env, úsala para llamadas SSR.
+  if (isServer) {
+    if (!envUrl.startsWith('http')) {
+      return `http://localhost:3000${envUrl}`;
+    }
+    return envUrl;
   }
 
-  // En cliente o si ya es URL absoluta: usar tal cual
-  return envUrl;
+  // En cliente (browser): siempre usar la ruta proxy de la misma origin para evitar CORS.
+  return envUrl.startsWith('/') ? envUrl : proxyPath;
 }
 
 // Función para obtener el token actual

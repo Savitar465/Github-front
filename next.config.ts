@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
     // Ensure no trailing slash
     const normalize = (u: string) => u.endsWith('/') ? u.slice(0, -1) : u;
 
+    // Warn developers when repository API is configured as a relative path.
+    // A relative value like '/api/repository' will be rewritten to itself
+    // and can cause 404 responses because the proxy points to the same path.
+    if (!repoApi.startsWith('http')) {
+      // Only warn in development
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.warn(`NEXT_PUBLIC_REPOSITORY_API_URL is set to a relative path ('${repoApi}'). If your backend is running on a different port (e.g. 8090), set NEXT_PUBLIC_REPOSITORY_API_URL to the absolute backend URL (e.g. http://localhost:8090/api) to avoid proxy self-rewrite 404s.`);
+      }
+    }
+
     return [
       {
         source: '/api/files/:path*',

@@ -9,6 +9,7 @@ import { MembersManager } from "./_components/members-manager";
 type Props = {
   params: Promise<{ orgName: string }>;
 };
+import type { OrgMember } from '@/types/org-member';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { orgName } = await params;
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function OrgMembersPage({ params }: Props) {
   const { orgName } = await params;
 
-  let members = [];
+  let members: OrgMember[] = [];
   let fetchError: string | null = null;
 
   try {
