@@ -105,9 +105,9 @@ export function RepoMetaClient({ owner, repo }: Props) {
             <h2 className="text-xl font-semibold">Este repositorio está vacío</h2>
             <p className="text-sm text-muted-foreground">Configuración rápida: si ya has hecho esto antes, puedes clonar el repositorio y hacer push, o crear un nuevo archivo abajo.</p>
 
-            <div className="mt-4 flex gap-2">
+              <div className="mt-4 flex gap-2">
               <Button size="sm" asChild>
-                <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Create new file</a>
+                <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Crear archivo</a>
               </Button>
               <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={async (e) => {
                 const files = e.target.files;
@@ -132,7 +132,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
                   (e.target as HTMLInputElement).value = '';
                 }
               }} />
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Upload files</Button>
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Subir archivos</Button>
             </div>
           </div>
         </CardContent>
@@ -199,10 +199,9 @@ export function RepoMetaClient({ owner, repo }: Props) {
                       <h2 className="text-2xl font-semibold">Configuración rápida: si ya has hecho esto antes</h2>
                       <div className="w-full p-4 rounded bg-slate-50/5">
                         <div className="flex flex-wrap gap-2 items-center">
-                          <Button size="sm">Abrir en Desktop</Button>
+                          <Button size="sm">Abrir en escritorio</Button>
                           <Button size="sm" variant="outline">HTTPS</Button>
-                          <Button size="sm" variant="outline">SSH</Button>
-                          <div className="ml-4 text-sm text-muted-foreground">git@github.com:{owner}/{repo}.git</div>
+                          <div className="ml-4 text-sm text-muted-foreground">https://github.com/{owner}/{repo}.git</div>
                         </div>
                         <div className="mt-4 bg-slate-800 p-3 rounded text-sm text-white">
                           <pre className="whitespace-pre-wrap">{`echo "# ${repo}" >> README.md
@@ -210,7 +209,7 @@ git init
 git add README.md
 git commit -m "first commit"
 git branch -M main
-git remote add origin git@github.com:${owner}/${repo}.git
+git remote add origin https://github.com/${owner}/${repo}.git
 git push -u origin main`}</pre>
                         </div>
                       </div>
