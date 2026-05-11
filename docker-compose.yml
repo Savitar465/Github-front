@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: githubx-postgres
+    environment:
+      POSTGRES_DB: github_files_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d github_files_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - githubx-network
+
+  # Keycloak Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: githubx-keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+    command: start-dev
+    ports:
+      - "8180:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./docker/keycloak-realm.json:/opt/keycloak/data/import/realm.json:ro
+    networks:
+      - githubx-network
+
+  # Backend - Spring Boot Microservice
+  backend:
+    build:
+      context: ../Github-files-ms
+      dockerfile: Dockerfile
+    container_name: githubx-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: github_files_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      JWT_ISSUER_URI: http://keycloak:8080/realms/github-files
+      SERVER_PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - githubx-network
+
+  # Frontend - Next.js Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: githubx-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8081/api
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8180
+      NEXT_PUBLIC_KEYCLOAK_REALM: github-files
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: github-front
+      NEXT_PUBLIC_USE_KEYCLOAK: "false"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - githubx-network
+
+volumes:
+  postgres_data:
+
+networks:
+  githubx-network:
+    driver: bridge
