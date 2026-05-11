@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Star, GitFork, Eye, Code, MessageSquare, GitCompare } from 'lucide-react';
+import { GitBranch, Star, GitFork, Eye, Code, History, GitCompare, Settings, GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type RepoHeaderProps = {
@@ -7,10 +7,7 @@ type RepoHeaderProps = {
   repo: string;
   description?: string;
   defaultBranch?: string;
-  activeTab?: 'code' | 'issues' | 'pulls' | 'actions' | 'projects' | 'wiki' | 'security' | 'insights';
-  starsCount?: number;
-  forksCount?: number;
-  watchersCount?: number;
+  activeTab?: 'code' | 'commits' | 'compare' | 'pulls';
 };
 
 export function RepoHeader({
@@ -24,14 +21,10 @@ export function RepoHeader({
   watchersCount = 0,
 }: RepoHeaderProps) {
   const tabs = [
-    { id: 'code', label: 'Code', icon: Code, href: `/${owner}/${repo}` },
-    { id: 'issues', label: 'Issues', icon: MessageSquare, href: `/${owner}/${repo}/issues` },
-    { id: 'pulls', label: 'Pull requests', icon: GitCompare, href: `/${owner}/${repo}/pulls` },
-    { id: 'actions', label: 'Actions', icon: Code, href: `/${owner}/${repo}/actions` },
-    { id: 'projects', label: 'Projects', icon: Code, href: `/${owner}/${repo}/projects` },
-    { id: 'wiki', label: 'Wiki', icon: Code, href: `/${owner}/${repo}/wiki` },
-    { id: 'security', label: 'Security', icon: Code, href: `/${owner}/${repo}/security` },
-    { id: 'insights', label: 'Insights', icon: Code, href: `/${owner}/${repo}/insights` },
+    { id: 'code', label: 'Código', icon: Code, href: `/${owner}/${repo}` },
+    { id: 'pulls', label: 'Pull Requests', icon: GitPullRequest, href: `/${owner}/${repo}/pulls` },
+    { id: 'commits', label: 'Commits', icon: History, href: `/${owner}/${repo}/commits` },
+    { id: 'compare', label: 'Comparar', icon: GitCompare, href: `/${owner}/${repo}/compare` },
   ] as const;
 
   return (
