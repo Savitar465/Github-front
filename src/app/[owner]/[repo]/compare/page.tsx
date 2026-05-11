@@ -8,45 +8,7 @@ import { useParams } from 'next/navigation';
 import { filesApi } from '@/lib/api';
 import type { CommitDTO, CommitFile, CompareDTO } from '@/lib/api';
 
-// Mock data para fallback
-const mockCompare: CompareDTO = {
-  commits: [
-    {
-      sha: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0',
-      message: 'feat: Agregar nueva funcionalidad',
-      author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-      committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-16T14:30:00Z' },
-      parents: [],
-    },
-    {
-      sha: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1',
-      message: 'fix: Corregir bug en login',
-      author: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T18:45:00Z' },
-      committer: { name: 'Davichox', email: 'davi@example.com', date: '2024-01-15T18:45:00Z' },
-      parents: [],
-    },
-  ],
-  files: [
-    {
-      filename: 'src/app/login/page.tsx',
-      status: 'modified',
-      additions: 25,
-      deletions: 10,
-      changes: 35,
-      patch: '@@ -1,10 +1,25 @@\n+// New login implementation',
-    },
-    {
-      filename: 'src/lib/auth.ts',
-      status: 'added',
-      additions: 45,
-      deletions: 0,
-      changes: 45,
-    },
-  ],
-  totalCommits: 2,
-  aheadBy: 2,
-  behindBy: 0,
-};
+// Removed local compare mock — rely on backend comparison API. Errors show message and leave comparison null.
 
 export default function ComparePage() {
   const params = useParams();
@@ -78,8 +40,8 @@ export default function ComparePage() {
       setComparison(result);
     } catch (err) {
       console.error('Error comparing branches:', err);
-      setError('Error al comparar branches. Usando datos de ejemplo.');
-      setComparison(mockCompare);
+      setError('Error al comparar branches. Intenta de nuevo más tarde.');
+      setComparison(null);
     } finally {
       setLoading(false);
     }

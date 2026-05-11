@@ -53,7 +53,7 @@ export function ReposClient() {
       setError(null);
 
       try {
-        const response = await listRepositories(token, { page: 1, perPage: 100 });
+        const response = await listRepositories(token!, { page: 1, perPage: 100 });
 
         if (cancelled) {
           return;
@@ -248,6 +248,8 @@ export function ReposClient() {
                       <p className="mt-1 text-sm text-muted-foreground">{repo.description}</p>
                     )}
 
+                    <div className="mt-1 text-xs text-muted-foreground">Updated: {repo.updatedAt ? new Date(repo.updatedAt).toLocaleString() : '—'}</div>
+
                     <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                       {repo.language && (
                         <span className="flex items-center gap-1.5">
@@ -267,12 +269,16 @@ export function ReposClient() {
                     </div>
                   </div>
 
-                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                    <Link href={`/${repo.ownerUsername}/${repo.name}`}>
-                      <Book className="h-4 w-4" />
-                      Abrir
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" className="gap-1.5"> <Star className="h-4 w-4" /> Star</Button>
+                    <Button size="sm" className="gap-1.5"> <GitFork className="h-4 w-4" /> Fork</Button>
+                    <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                      <Link href={`/${repo.ownerUsername}/${repo.name}`}>
+                        <Book className="h-4 w-4" />
+                        Abrir
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
