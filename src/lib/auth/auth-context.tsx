@@ -31,7 +31,7 @@ const TOKEN_KEY = 'github_clone_token';
 const USER_KEY = 'github_clone_user';
 
 // URL del microservicio de usuarios
-const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081/v1';
+const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081';
 
 // Configuración de Keycloak OIDC
 const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8180';
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
           });
         } else {
-          throw new Error('Credenciales inválidas. Usa demo/demo');
+          throw new Error('Credenciales inválidas');
         }
       } else {
         // Login via Users microservice

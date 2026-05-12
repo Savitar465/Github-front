@@ -26,7 +26,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/repos');
     } catch (err) {
-      setError('Credenciales inválidas. Usa demo/demo');
+      setError('Credenciales inválidas');
     }
   };
 
