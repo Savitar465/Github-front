@@ -7,8 +7,23 @@
 
 import { Configuration, DefaultApi } from './pullrequest-client';
 
-// URL del backend de pull requests
-const PR_API_URL = process.env.NEXT_PUBLIC_PR_API_URL || 'http://localhost:8082/api';
+// Determinar la URL base del API según el entorno
+function getPullRequestApiUrl(): string {
+  const isServer = typeof window === 'undefined';
+  const envUrl = process.env.NEXT_PUBLIC_PR_API_URL || '/api/pullrequest';
+  const proxyPath = '/api/pullrequest';
+
+  // En servidor: usar URL directa si está configurada, sino usar proxy en localhost:3000
+  if (isServer) {
+    if (!envUrl.startsWith('http')) {
+      return `http://localhost:3000${envUrl}`;
+    }
+    return envUrl;
+  }
+
+  // En cliente (navegador): siempre usar el proxy de Next.js para evitar CORS
+  return envUrl.startsWith('/') ? envUrl : proxyPath;
+}
 
 // Token key para localStorage (debe coincidir con auth-context)
 const TOKEN_KEY = 'github_clone_token';
@@ -21,7 +36,7 @@ function getAccessToken(): string | undefined {
 
 // Configuración del cliente con autenticación dinámica
 const configuration = new Configuration({
-  basePath: PR_API_URL,
+  basePath: getPullRequestApiUrl(),
   accessToken: async () => {
     const token = getAccessToken();
     return token || '';
@@ -34,7 +49,7 @@ export const pullRequestsApi = new DefaultApi(configuration);
 // Factory para crear instancia con token específico (útil para SSR)
 export function createPullRequestsApiClient(token?: string) {
   const config = new Configuration({
-    basePath: PR_API_URL,
+    basePath: getPullRequestApiUrl(),
     accessToken: token ? async () => token : undefined,
   });
   return new DefaultApi(config);

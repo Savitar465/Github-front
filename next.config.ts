@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
     const repoApi = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
     const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || repoApi;
     const orgApi = process.env.NEXT_PUBLIC_ORG_API_URL || 'http://localhost:8083';
+    const pullRequestApi = process.env.NEXT_PUBLIC_PR_API_URL || 'http://localhost:8082/api';
+
+    // eslint-disable-next-line no-console
+    console.log('[REWRITE CONFIG] repoApi:', repoApi);
 
     // Ensure no trailing slash
     const normalize = (u: string) => u.endsWith('/') ? u.slice(0, -1) : u;
@@ -53,6 +57,10 @@ const nextConfig: NextConfig = {
       {
         source: '/v1/user/orgs',
         destination: `${normalize(orgApi)}/v1/user/orgs`,
+      },
+      {
+        source: '/api/pullrequest/:path*',
+        destination: `${normalize(pullRequestApi)}/:path*`,
       },
     ];
   },

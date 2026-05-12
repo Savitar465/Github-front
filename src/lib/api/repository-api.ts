@@ -230,7 +230,7 @@ export function getBranch(owner: string, repo: string, branch: string, token?: s
 
 export type CreateBranchBody = {
   name: string;
-  source?: string; // branch or commit sha to branch from (defaults to defaultBranch)
+  fromBranch: string; // branch name to branch from
 };
 
 // Create a new branch from a source (branch name or commit sha)
@@ -441,4 +441,80 @@ export function compareBranches(
     }
     return response.json() as Promise<BranchCompareResponse>;
   });
+}
+
+// ============ Commits API Types ============
+
+export type CommitAuthorDTO = {
+  name: string;
+  email: string;
+  date: string;
+};
+
+export type CommitFileChangeDTO = {
+  filename: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied';
+  additions: number;
+  deletions: number;
+  patch?: string;
+  previousFilename?: string;
+};
+
+export type CommitDTO = {
+  sha: string;
+  shortSha: string;
+  message: string;
+  title: string;
+  description?: string;
+  author: CommitAuthorDTO;
+  committer: CommitAuthorDTO;
+  authorDate: string;
+  committerDate: string;
+  parentShas: string[];
+  files?: CommitFileChangeDTO[];
+  additions?: number;
+  deletions?: number;
+  filesChanged?: number;
+};
+
+export type CommitPaginationInfo = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ListCommitsResponse = {
+  commits: CommitDTO[];
+  pagination: CommitPaginationInfo;
+};
+
+// ============ Commits API Functions ============
+
+export function listCommits(
+  owner: string,
+  repo: string,
+  params: { branch?: string; path?: string; page?: number; perPage?: number } = {},
+  token?: string
+) {
+  const searchParams = new URLSearchParams();
+  if (params.branch) searchParams.set('branch', params.branch);
+  if (params.path) searchParams.set('path', params.path);
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+
+  const query = searchParams.toString();
+  return repositoryRequest<ListCommitsResponse>(
+    `/v1/repos/${owner}/${repo}/commits${query ? `?${query}` : ''}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export function getCommit(owner: string, repo: string, sha: string, token?: string) {
+  return repositoryRequest<CommitDTO>(
+    `/v1/repos/${owner}/${repo}/commits/${sha}`,
+    { method: 'GET' },
+    token
+  );
 }

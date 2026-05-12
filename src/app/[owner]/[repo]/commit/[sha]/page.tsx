@@ -1,11 +1,10 @@
 import { RepoHeader, DiffViewer } from '@/components/repo';
-import { filesApi } from '@/lib/api';
-import type { CommitDTO, CommitFile } from '@/lib/api';
+import { getCommit, type CommitDTO, type CommitFileChangeDTO } from '@/lib/api/repository-api';
 import { buildPageTitle } from '@/lib/build-page-title';
 import { Metadata } from 'next';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { User, Calendar, GitCommit, Copy, Check } from 'lucide-react';
+import { Calendar, GitCommit, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -20,30 +19,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Removed mock commit/sample files — rely on backend. If API fails, return minimal safe data.
-
 async function getCommitDetail(
   owner: string,
   repo: string,
   sha: string
-): Promise<{ commit: CommitDTO; files: CommitFile[] }> {
+): Promise<{ commit: CommitDTO; files: CommitFileChangeDTO[] }> {
   try {
-    // Obtener información del commit (incluye archivos modificados)
-    const commitResponse = await filesApi.getCommit({ owner, repo, sha });
-
+    const commit = await getCommit(owner, repo, sha);
     return {
-      commit: commitResponse.commit,
-      files: commitResponse.files || [],
+      commit,
+      files: commit.files || [],
     };
   } catch (error) {
     console.error('Error fetching commit:', error);
-    // Return a minimal commit object to keep the page stable, with no files.
     const fallbackCommit: CommitDTO = {
       sha: sha,
+      shortSha: sha.slice(0, 7),
       message: '',
+      title: '',
       author: { name: 'Unknown', email: '', date: new Date().toISOString() },
       committer: { name: 'Unknown', email: '', date: new Date().toISOString() },
-      parents: [],
+      authorDate: new Date().toISOString(),
+      committerDate: new Date().toISOString(),
+      parentShas: [],
     };
     return { commit: fallbackCommit, files: [] };
   }
@@ -104,14 +102,14 @@ export default async function CommitDetailPage({ params }: PageProps) {
                 <span>{commit.sha}</span>
               </div>
 
-              {commit.parents && commit.parents.length > 0 && (
+              {commit.parentShas && commit.parentShas.length > 0 && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <span>Parent:</span>
                   <Link
-                    href={`/${owner}/${repo}/commit/${commit.parents[0].sha}`}
+                    href={`/${owner}/${repo}/commit/${commit.parentShas[0]}`}
                     className="font-mono text-blue-500 hover:underline"
                   >
-                    {commit.parents[0].sha.slice(0, 7)}
+                    {commit.parentShas[0].slice(0, 7)}
                   </Link>
                 </div>
               )}

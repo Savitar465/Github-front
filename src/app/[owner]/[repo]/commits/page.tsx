@@ -1,6 +1,5 @@
 import { RepoHeader, CommitList } from '@/components/repo';
-import { filesApi } from '@/lib/api';
-import type { CommitDTO } from '@/lib/api';
+import { listCommits, type CommitDTO } from '@/lib/api/repository-api';
 import { buildPageTitle } from '@/lib/build-page-title';
 import { Metadata } from 'next';
 import { Button } from '@/components/ui/button';
@@ -19,8 +18,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Removed mock commits — rely on backend. Fallbacks return empty commit lists.
-
 async function getCommits(
   owner: string,
   repo: string,
@@ -28,10 +25,8 @@ async function getCommits(
   branch?: string
 ): Promise<{ commits: CommitDTO[]; totalPages: number }> {
   try {
-    const response = await filesApi.listCommits({
-      owner,
-      repo,
-      sha: branch,
+    const response = await listCommits(owner, repo, {
+      branch,
       page,
       perPage: 30,
     });
