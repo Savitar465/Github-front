@@ -2,13 +2,25 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
-import { getRepository, type RepositoryDTO, listBranches, listCollaborators, type BranchDTO, type CollaboratorDTO, type ListBranchesBody, type ListCollaboratorsBody } from '@/lib/api/repository-api';
-import { filesApi } from '@/lib/api';
+import { getRepository, type RepositoryDTO, listBranches, listCollaborators, type BranchDTO, type CollaboratorDTO, type ListBranchesBody, type ListCollaboratorsBody, uploadFile } from '@/lib/api/repository-api';
 import type { DirectoryEntryDTO } from '@/lib/api/github-files-client/src/models/DirectoryEntryDTO';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { createBranch, deleteBranch } from '@/lib/api/repository-api';
+
+const GIT_HTTP_URL = process.env.NEXT_PUBLIC_GIT_HTTP_URL || 'http://localhost:9080';
+const GIT_SSH_HOST = process.env.NEXT_PUBLIC_GIT_SSH_HOST || 'localhost';
+const GIT_SSH_PORT = process.env.NEXT_PUBLIC_GIT_SSH_PORT || '2222';
+
+function getCloneHttpUrl(owner: string, repo: string): string {
+  return `${GIT_HTTP_URL}/${owner}/${repo}.git`;
+}
+
+function getCloneSshUrl(owner: string, repo: string): string {
+  return `git@${GIT_SSH_HOST}:${GIT_SSH_PORT}/${owner}/${repo}.git`;
+}
 
 type Props = { owner: string; repo: string };
 
@@ -101,7 +113,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
       <Card>
         <CardContent className="p-6 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-md bg-slate-100 flex items-center justify-center text-2xl">📦</div>
+            <div className="w-16 h-16 rounded-md bg-muted flex items-center justify-center text-2xl">📦</div>
             <h2 className="text-xl font-semibold">Este repositorio está vacío</h2>
             <p className="text-sm text-muted-foreground">Configuración rápida: si ya has hecho esto antes, puedes clonar el repositorio y hacer push, o crear un nuevo archivo abajo.</p>
 
@@ -113,15 +125,15 @@ export function RepoMetaClient({ owner, repo }: Props) {
                 const files = e.target.files;
                 if (!files || files.length === 0) return;
                         try {
+                  if (!token) throw new Error('No autenticado');
                   for (let i = 0; i < files.length; i++) {
                     const f = files[i];
                     const base64 = await readFileAsBase64(f);
                     const content = base64.replace(/^data:.*;base64,/, '');
-                    await filesApi.createFile({
-                      owner,
-                      repo,
-                      filePath: f.name,
-                      createFileBody: { content, message: `Add ${f.name}`, branch: data.defaultBranch ?? 'main' },
+                    await uploadFile(owner, repo, f.name, token, {
+                      content,
+                      message: `Add ${f.name}`,
+                      branch: data.defaultBranch ?? 'main',
                     });
                   }
                   router.refresh();
@@ -151,15 +163,15 @@ export function RepoMetaClient({ owner, repo }: Props) {
           const files = e.target.files;
           if (!files || files.length === 0) return;
           try {
+            if (!token) throw new Error('No autenticado');
             for (let i = 0; i < files.length; i++) {
               const f = files[i];
               const base64 = await readFileAsBase64(f);
               const content = base64.replace(/^data:.*;base64,/, '');
-              await filesApi.createFile({
-                owner,
-                repo,
-                filePath: f.name,
-                createFileBody: { content, message: `Add ${f.name}`, branch: data.defaultBranch ?? 'main' },
+              await uploadFile(owner, repo, f.name, token, {
+                content,
+                message: `Add ${f.name}`,
+                branch: data.defaultBranch ?? 'main',
               });
             }
             router.refresh();
@@ -181,7 +193,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
             {topics.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {topics.map((t: string) => (
-                  <span key={t} className="text-xs bg-slate-100 border border-slate-300 rounded-full px-3 py-1">{t}</span>
+                  <span key={t} className="text-xs bg-muted text-muted-foreground border border-border rounded-full px-3 py-1">{t}</span>
                 ))}
               </div>
             )}
@@ -197,19 +209,18 @@ export function RepoMetaClient({ owner, repo }: Props) {
                   <CardContent className="p-6 text-center">
                     <div className="flex flex-col items-start gap-4">
                       <h2 className="text-2xl font-semibold">Configuración rápida: si ya has hecho esto antes</h2>
-                      <div className="w-full p-4 rounded bg-slate-50/5">
+                      <div className="w-full p-4 rounded bg-muted border border-border">
                         <div className="flex flex-wrap gap-2 items-center">
-                          <Button size="sm">Abrir en escritorio</Button>
                           <Button size="sm" variant="outline">HTTPS</Button>
-                          <div className="ml-4 text-sm text-muted-foreground">https://github.com/{owner}/{repo}.git</div>
+                          <code className="ml-2 text-sm bg-muted text-foreground px-2 py-1 rounded font-mono border">{getCloneHttpUrl(owner, repo)}</code>
                         </div>
-                        <div className="mt-4 bg-slate-800 p-3 rounded text-sm text-white">
-                          <pre className="whitespace-pre-wrap">{`echo "# ${repo}" >> README.md
+                        <div className="mt-4 bg-muted/80 p-3 rounded text-sm text-foreground border">
+                          <pre className="whitespace-pre-wrap font-mono">{`echo "# ${repo}" >> README.md
 git init
 git add README.md
 git commit -m "first commit"
 git branch -M main
-git remote add origin https://github.com/${owner}/${repo}.git
+git remote add origin ${getCloneHttpUrl(owner, repo)}
 git push -u origin main`}</pre>
                         </div>
                       </div>
@@ -224,7 +235,7 @@ git push -u origin main`}</pre>
                   </CardContent>
                 </Card>
               ) : (
-                <FileBrowser owner={owner} repo={repo} defaultBranch={data.defaultBranch || 'main'} token={token || undefined} onEntriesLoaded={setLoadedEntries} />
+                <FileBrowser owner={owner} repo={repo} defaultBranch={data.defaultBranch || 'main'} token={token || undefined} onEntriesLoaded={setLoadedEntries} onUploadClick={() => fileInputRef.current?.click()} />
               )}
             </div>
           </div>
@@ -329,10 +340,10 @@ function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: strin
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.avatarUrl} alt={c.username} className="h-6 w-6 rounded-full" />
             ) : (
-              <div className="h-6 w-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-semibold">{c.username.charAt(0).toUpperCase()}</div>
+              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">{c.username.charAt(0).toUpperCase()}</div>
             )}
             <div>
-              <div className="text-xs font-medium">{c.username}</div>
+              <div className="text-xs font-medium text-foreground">{c.username}</div>
               <div className="text-xs text-muted-foreground">{c.role}</div>
             </div>
           </div>
@@ -342,7 +353,7 @@ function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: strin
   );
 }
 
-function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded }: { owner: string; repo: string; defaultBranch: string; token?: string; onEntriesLoaded?: (entries: DirectoryEntryDTO[] | null) => void }) {
+function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded, onUploadClick }: { owner: string; repo: string; defaultBranch: string; token?: string; onEntriesLoaded?: (entries: DirectoryEntryDTO[] | null) => void; onUploadClick?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<DirectoryEntryDTO[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -360,7 +371,7 @@ function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded }: { o
         let resp = await fetch(proxyUrl, { method: 'GET', headers });
 
         if (resp.status === 404) {
-          const backendUrl = `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
+          const backendUrl = `${process.env.NEXT_PUBLIC_REPOSITORY_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
           resp = await fetch(backendUrl, { method: 'GET', headers });
         }
 
@@ -390,34 +401,46 @@ function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded }: { o
 
   if (!entries || entries.length === 0) {
     return (
-      <div className="mt-6 p-6 border rounded-md bg-white">
-        <h2 className="text-lg font-semibold">Este repositorio está vacío</h2>
+      <div className="mt-6 p-6 border border-border rounded-md bg-card text-card-foreground">
+        <h2 className="text-lg font-semibold text-foreground">Este repositorio está vacío</h2>
         <p className="mt-2 text-sm text-muted-foreground">Crea un nuevo archivo, sube archivos o importa código desde otro repositorio.</p>
         <div className="mt-4 flex gap-2">
-          <Button size="sm">Crear archivo</Button>
-          <Button variant="outline" size="sm">Subir archivos</Button>
+          <Button size="sm" asChild>
+            <a href={`/${owner}/${repo}/new/${defaultBranch}`}>Crear archivo</a>
+          </Button>
+          <Button variant="outline" size="sm" onClick={onUploadClick}>Subir archivos</Button>
         </div>
       </div>
     );
   }
 
+  const isDir = (type: string) => type === 'dir' || type === 'directory';
+
   return (
     <div className="mt-4">
-      <div className="border rounded-md bg-white">
+      <div className="border border-border rounded-md bg-card">
         <ul>
-          {entries.map((e) => (
-            <li key={e.path} className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-slate-50">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="text-sm font-medium flex-shrink-0">
-                  {e.type === 'dir' ? '📁' : '📄'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{e.name}</div>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground text-right flex-shrink-0">{e.size != null ? `${e.size} bytes` : ''}</div>
-            </li>
-          ))}
+          {entries.map((e) => {
+            const href = isDir(e.type)
+              ? `/${owner}/${repo}/tree/${defaultBranch}/${e.path}`
+              : `/${owner}/${repo}/blob/${defaultBranch}/${e.path}`;
+
+            return (
+              <li key={e.path} className="border-b border-border last:border-b-0">
+                <Link href={href} className="flex items-center justify-between px-4 py-3 hover:bg-muted/50">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="text-sm font-medium flex-shrink-0">
+                      {isDir(e.type) ? '📁' : '📄'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-foreground truncate hover:text-blue-500 hover:underline">{e.name}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground text-right flex-shrink-0">{e.size != null ? `${e.size} bytes` : ''}</div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>

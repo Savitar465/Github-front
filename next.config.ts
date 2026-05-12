@@ -14,9 +14,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    const filesApi = process.env.NEXT_PUBLIC_API_URL || '/api/files';
+    const filesApi = process.env.NEXT_PUBLIC_FILES_API_URL || 'http://localhost:8084/api';
     const repoApi = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
     const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || repoApi;
+    const orgApi = process.env.NEXT_PUBLIC_ORG_API_URL || 'http://localhost:8083';
 
     // Ensure no trailing slash
     const normalize = (u: string) => u.endsWith('/') ? u.slice(0, -1) : u;
@@ -44,6 +45,14 @@ const nextConfig: NextConfig = {
       {
         source: '/api/issues/:path*',
         destination: `${normalize(issuesApi)}/:path*`,
+      },
+      {
+        source: '/v1/orgs/:path*',
+        destination: `${normalize(orgApi)}/v1/orgs/:path*`,
+      },
+      {
+        source: '/v1/user/orgs',
+        destination: `${normalize(orgApi)}/v1/user/orgs`,
       },
     ];
   },

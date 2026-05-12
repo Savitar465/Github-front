@@ -1,42 +1,67 @@
-import type { Metadata } from "next";
+'use client';
 
+import { useEffect, useState, useCallback, use } from "react";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
-import { buildPageTitle } from "@/lib/build-page-title";
 import { getTeam, getTeamMembers, getTeamRepos } from "@/lib/services/teams";
 import type { TeamDTO, TeamMemberDTO, TeamRepoDTO } from '@/types/team';
 import { TeamDetail } from "./_components/team-detail";
+import { useAuth } from "@/lib/auth";
+import { Loader2 } from "lucide-react";
 
 type Props = {
   params: Promise<{ orgName: string; teamId: string }>;
 };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { orgName, teamId } = await params;
-  try {
-    const team = await getTeam(orgName, teamId);
-    return { title: buildPageTitle(`${team.name} · ${orgName}`) };
-  } catch {
-    return { title: buildPageTitle("Equipo") };
-  }
-}
+export default function TeamDetailPage({ params }: Props) {
+  const { orgName, teamId } = use(params);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [team, setTeam] = useState<TeamDTO | null>(null);
+  const [members, setMembers] = useState<TeamMemberDTO[]>([]);
+  const [repos, setRepos] = useState<TeamRepoDTO[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-export default async function TeamDetailPage({ params }: Props) {
-  const { orgName, teamId } = await params;
+  const loadTeamData = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const [teamData, membersData, reposData] = await Promise.all([
+        getTeam(orgName, teamId),
+        getTeamMembers(orgName, teamId),
+        getTeamRepos(orgName, teamId),
+      ]);
+      setTeam(teamData);
+      setMembers(membersData);
+      setRepos(reposData);
+    } catch (err) {
+      console.error("[TeamDetailPage] Error:", err);
+      setFetchError("No se pudo cargar el equipo.");
+    } finally {
+      setLoading(false);
+    }
+  }, [orgName, teamId]);
 
-  let team: TeamDTO | null = null;
-  let members: TeamMemberDTO[] = [];
-  let repos: TeamRepoDTO[] = [];
-  let fetchError: string | null = null;
+  useEffect(() => {
+    if (authLoading) return;
 
-  try {
-    [team, members, repos] = await Promise.all([
-      getTeam(orgName, teamId),
-      getTeamMembers(orgName, teamId),
-      getTeamRepos(orgName, teamId),
-    ]);
-  } catch {
-    fetchError = "No se pudo cargar el equipo.";
+    if (!isAuthenticated) {
+      setLoading(false);
+      setFetchError("Debes iniciar sesión para ver el equipo.");
+      return;
+    }
+
+    loadTeamData();
+  }, [authLoading, isAuthenticated, loadTeamData]);
+
+  if (authLoading || loading) {
+    return (
+      <PageContainer title="Equipo" description="">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
   }
 
   return (

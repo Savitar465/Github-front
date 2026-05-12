@@ -16,10 +16,14 @@ const API_BASE =
     ? (process.env.NEXT_PUBLIC_ISSUES_API_URL ?? "")
     : "/issues";
 
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN ?? "";
+function getToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("github_clone_token") || "";
+}
 
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  return { Authorization: `Bearer ${API_TOKEN}`, ...extra };
+  const token = getToken();
+  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
 }
 
 export async function listIssues(

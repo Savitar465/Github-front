@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { usersApi } from '@/lib/api/users';
 import type { UserResponse, UserRequest } from '@/lib/api/users';
 import { useAuth } from '@/lib/auth';
-import { Navbar } from '@/components/common/navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Users, Plus, Pencil, Trash2, Loader2, Search, Eye } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Loader2, Search, Eye, EyeOff } from 'lucide-react';
 
 export default function UsersPage() {
   const router = useRouter();
@@ -56,6 +55,7 @@ export default function UsersPage() {
     password: '',
   });
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Modal de eliminar
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -155,6 +155,7 @@ export default function UsersPage() {
       lastName: '',
       password: '',
     });
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
@@ -168,12 +169,14 @@ export default function UsersPage() {
       lastName: user.lastName,
       password: '',
     });
+    setShowPassword(false);
     setDialogOpen(true);
   };
 
   // Guardar usuario (crear o editar)
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
     try {
       if (editingUser) {
         await usersApi.editUser({
@@ -188,9 +191,23 @@ export default function UsersPage() {
 
       setDialogOpen(false);
       loadUsers();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error saving user:', err);
-      setError('Error al guardar usuario');
+      const errorObj = err as { response?: Response };
+      if (errorObj.response) {
+        const status = errorObj.response.status;
+        if (status === 401) {
+          setError('Sesión expirada. Por favor, inicia sesión nuevamente.');
+        } else if (status === 403) {
+          setError('No tienes permisos para realizar esta acción. Se requiere rol ADMIN o USER_MANAGER.');
+        } else if (status === 409) {
+          setError('El usuario o email ya existe.');
+        } else {
+          setError(`Error del servidor (${status}). Intenta nuevamente.`);
+        }
+      } else {
+        setError('Error de conexión. Verifica que el servicio esté corriendo.');
+      }
     } finally {
       setSaving(false);
     }
@@ -234,7 +251,6 @@ export default function UsersPage() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen">
-        <Navbar />
         <div className="max-w-6xl mx-auto px-6 py-12 text-center">
           <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h1 className="text-2xl font-bold mb-2">Acceso restringido</h1>
@@ -251,8 +267,6 @@ export default function UsersPage() {
 
   return (
     <div className="min-h-screen">
-      <Navbar />
-
       <div className="max-w-6xl mx-auto px-6 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -461,14 +475,24 @@ export default function UsersPage() {
               <Label htmlFor="password">
                 Contraseña {editingUser && '(dejar vacío para no cambiar)'}
               </Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
 

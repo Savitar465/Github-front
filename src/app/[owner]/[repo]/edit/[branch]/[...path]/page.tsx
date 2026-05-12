@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { RepoHeader, Breadcrumbs, BranchSelector } from '@/components/repo';
 import { FileEditor } from '@/components/repo/file-editor';
-import { filesApi } from '@/lib/api';
+import { getFileContent, uploadFile } from '@/lib/api/repository-api';
 import { useAuth } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 
 export default function EditFilePage() {
   const router = useRouter();
   const params = useParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
 
   const owner = params.owner as string;
   const repo = params.repo as string;
@@ -29,12 +29,7 @@ export default function EditFilePage() {
   useEffect(() => {
     async function loadFile() {
       try {
-        const response = await filesApi.getFileContent({
-          owner,
-          repo,
-          filePath,
-          ref: branch,
-        });
+        const response = await getFileContent(owner, repo, filePath, undefined, branch);
 
         if (response.file?.content) {
           // Decodificar base64
@@ -59,19 +54,18 @@ export default function EditFilePage() {
     path: string;
     message: string;
   }) => {
+    if (!token) {
+      setError('No autenticado');
+      return;
+    }
+
     // Codificar contenido a base64
     const contentBase64 = btoa(unescape(encodeURIComponent(data.content)));
 
-    await filesApi.updateFile({
-      owner,
-      repo,
-      filePath,
-      updateFileBody: {
-        sha,
-        content: contentBase64,
-        message: data.message,
-        branch,
-      },
+    await uploadFile(owner, repo, filePath, token, {
+      content: contentBase64,
+      message: data.message,
+      branch,
     });
 
     // Navegar al archivo

@@ -1,7 +1,6 @@
 import { RepoHeader, FileTree, BranchSelector, Breadcrumbs } from '@/components/repo';
 import { CreateActions } from '@/components/repo/create-actions';
-import { filesApi } from '@/lib/api';
-import type { DirectoryEntryDTO } from '@/lib/api';
+import { getRepoContents } from '@/lib/api/repository-api';
 import { buildPageTitle } from '@/lib/build-page-title';
 import { Metadata } from 'next';
 
@@ -17,22 +16,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Removed local mock entries for directories; rely on repository API. Fallbacks return empty lists.
+// Map FileEntryDTO to DirectoryEntryDTO format expected by FileTree
+type DirectoryEntry = {
+  name: string;
+  path: string;
+  sha?: string;
+  type: 'file' | 'dir';
+  size?: number;
+};
 
+// Fetch directory contents from Repository API
 async function getDirectoryContents(
   owner: string,
   repo: string,
   path: string,
   branch: string
-): Promise<DirectoryEntryDTO[]> {
+): Promise<DirectoryEntry[]> {
   try {
-    const response = await filesApi.getRepositoryContents({
-      owner,
-      repo,
-      path,
-      ref: branch,
-    });
-    return response.entries || [];
+    const response = await getRepoContents(owner, repo, undefined, path, branch);
+    // Map contents to DirectoryEntry format expected by FileTree
+    return (response.contents || []).map(entry => ({
+      name: entry.name,
+      path: entry.path,
+      sha: entry.path, // Use path as sha if not provided
+      type: entry.type === 'directory' ? 'dir' as const : 'file' as const,
+      size: entry.size ?? undefined,
+    }));
   } catch (error) {
     console.error('Error fetching directory:', error);
     // If backend fails, return empty directory list.

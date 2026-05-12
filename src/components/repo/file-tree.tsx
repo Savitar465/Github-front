@@ -1,20 +1,32 @@
 import Link from 'next/link';
 import { FileIcon } from './file-icon';
-import type { DirectoryEntryDTO } from '@/lib/api';
+
+// Flexible entry type that works with both Files API and Repository API
+type FileEntry = {
+  name: string;
+  path: string;
+  sha?: string;
+  type: 'file' | 'dir' | 'directory';
+  size?: number;
+};
 
 type FileTreeProps = {
-  entries: DirectoryEntryDTO[];
+  entries: FileEntry[];
   owner: string;
   repo: string;
   branch?: string;
   currentPath?: string;
 };
 
+function isDirectory(type: string): boolean {
+  return type === 'dir' || type === 'directory';
+}
+
 export function FileTree({ entries, owner, repo, branch = 'main' }: FileTreeProps) {
   // Ordenar: carpetas primero, luego archivos alfabéticamente
   const sortedEntries = [...entries].sort((a, b) => {
-    if (a.type === 'dir' && b.type !== 'dir') return -1;
-    if (a.type !== 'dir' && b.type === 'dir') return 1;
+    if (isDirectory(a.type) && !isDirectory(b.type)) return -1;
+    if (!isDirectory(a.type) && isDirectory(b.type)) return 1;
     return a.name.localeCompare(b.name);
   });
 
@@ -22,14 +34,14 @@ export function FileTree({ entries, owner, repo, branch = 'main' }: FileTreeProp
     <div className="border rounded-lg overflow-hidden">
       <div className="divide-y divide-border">
         {sortedEntries.map((entry) => {
-          const isDir = entry.type === 'dir';
+          const isDir = isDirectory(entry.type);
           const href = isDir
             ? `/${owner}/${repo}/tree/${branch}/${entry.path}`
             : `/${owner}/${repo}/blob/${branch}/${entry.path}`;
 
           return (
             <div
-              key={entry.sha}
+              key={entry.path}
               className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-center gap-3">

@@ -281,7 +281,7 @@ export default function PullRequestDetailPage() {
               {pr.commitsCount || 0} commits
             </span>
             {pr.hasConflicts && (
-              <span className="flex items-center gap-1 text-amber-600">
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                 <AlertCircle className="h-4 w-4" />
                 Tiene conflictos
               </span>
@@ -297,7 +297,7 @@ export default function PullRequestDetailPage() {
 
           {/* Mergeability warning */}
           {mergeability && !mergeability.mergeable && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-700 dark:text-amber-400">
               <AlertCircle className="h-4 w-4 inline mr-2" />
               {mergeability.reason || 'Este PR no puede ser mergeado en este momento'}
             </div>
