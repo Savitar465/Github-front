@@ -143,8 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username?: string, password?: string) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
+    console.log('[Auth] Login attempt:', { username, USE_KEYCLOAK, USE_MOCK_AUTH, USERS_API_URL });
+
     try {
       if (USE_KEYCLOAK && username && password) {
+        console.log('[Auth] Using Keycloak direct login');
         // Resource Owner Password Grant (si está habilitado en Keycloak)
         const tokenUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
         const response = await fetch(tokenUrl, {
@@ -187,6 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else if (USE_MOCK_AUTH) {
         // Mock login para desarrollo (demo/demo)
+        console.log('[Auth] Using MOCK auth');
         await new Promise((resolve) => setTimeout(resolve, 300));
 
         if (username === 'demo' && password === 'demo') {
@@ -212,17 +216,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Login via Users microservice
-        const response = await fetch(`${USERS_API_URL}/v1/auth/login`, {
+        const loginUrl = `${USERS_API_URL}/v1/auth/login`;
+        console.log('[Auth] Using Users microservice:', loginUrl);
+        console.log('[Auth] Request body:', { username, password: '***' });
+
+        const response = await fetch(loginUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
 
+        console.log('[Auth] Response status:', response.status);
+
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Auth] Login failed:', response.status, errorText);
           throw new Error('Credenciales inválidas');
         }
 
         const data = await response.json();
+        console.log('[Auth] Login successful, token received');
 
         // Decodificar el access_token para obtener info del usuario
         const tokenParts = data.access_token.split('.');
@@ -246,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error) {
+      console.error('[Auth] Login error:', error);
       setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
       throw error;
     }
