@@ -276,15 +276,16 @@ export type UploadFileBody = {
 export type FileEntryDTO = {
   name: string;
   path: string;
-  sha: string;
-  type: 'file' | 'dir';
+  type: 'file' | 'directory';
   size?: number;
-  url?: string;
+  branch: string;
+  updatedAt: string;
+  contentType?: string;
+  downloadUrl?: string;
 };
 
 export type GetRepoContentsBody = {
-  entries: FileEntryDTO[];
-  truncated?: boolean;
+  contents: FileEntryDTO[];
 };
 
 export function uploadFile(
@@ -294,8 +295,11 @@ export function uploadFile(
   token: string,
   body: UploadFileBody
 ) {
+  const url = `/v1/repos/${owner}/${repo}/contents?path=${encodeURIComponent(path)}`;
+  console.log('[uploadFile] URL:', getRepositoryApiUrl() + url);
+  console.log('[uploadFile] Body:', body);
   return repositoryRequest<FileEntryDTO>(
-    `/v1/repos/${owner}/${repo}/contents?path=${encodeURIComponent(path)}`,
+    url,
     {
       method: 'PUT',
       body: JSON.stringify(body),
@@ -341,4 +345,100 @@ export function getRepoContents(
     { method: 'GET' },
     token
   );
+}
+
+// ============ File Content API Functions ============
+
+export type FileContentDTO = {
+  name: string;
+  path: string;
+  sha: string;
+  type: 'file' | 'directory';
+  size?: number;
+  encoding?: string;
+  content?: string;
+  downloadUrl?: string;
+};
+
+export type GetFileContentBody = {
+  file?: FileContentDTO;
+};
+
+export function getFileContent(
+  owner: string,
+  repo: string,
+  filePath: string,
+  token?: string,
+  ref?: string
+) {
+  const params = new URLSearchParams();
+  params.set('path', filePath);
+  if (ref) params.set('ref', ref);
+  const query = params.toString();
+
+  return repositoryRequest<GetFileContentBody>(
+    `/v1/repos/${owner}/${repo}/file?${query}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+// ============ Compare API Functions ============
+
+export type CommitInfo = {
+  sha: string;
+  shortSha: string;
+  message: string;
+  author: string;
+  authorEmail: string;
+  timestamp: string;
+};
+
+export type FileDiff = {
+  path: string;
+  oldPath?: string;
+  changeType: string;
+  additions: number;
+  deletions: number;
+  patch?: string;
+};
+
+export type BranchCompareResponse = {
+  baseBranch: string;
+  headBranch: string;
+  totalCommits: number;
+  filesChanged: number;
+  additions: number;
+  deletions: number;
+  commits: CommitInfo[];
+  files: FileDiff[];
+};
+
+export function compareBranches(
+  owner: string,
+  repo: string,
+  base: string,
+  head: string,
+  token?: string
+) {
+  const params = new URLSearchParams();
+  params.set('base', base);
+  params.set('head', head);
+
+  // El endpoint del backend es /repos/{owner}/{repo}/compare (sin /v1)
+  const baseUrl = getRepositoryApiUrl();
+  const url = `${baseUrl}/repos/${owner}/${repo}/compare?${params.toString()}`;
+
+  return fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  }).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`Compare failed: ${response.status}`);
+    }
+    return response.json() as Promise<BranchCompareResponse>;
+  });
 }

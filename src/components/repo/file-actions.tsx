@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, Pencil, Trash2, Check } from 'lucide-react';
-import { filesApi } from '@/lib/api';
+import { deleteFile } from '@/lib/api/repository-api';
 import { useAuth } from '@/lib/auth';
 import {
   AlertDialog,
@@ -38,7 +38,7 @@ export function FileActions({
   downloadUrl,
 }: FileActionsProps) {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -53,16 +53,13 @@ export function FileActions({
   };
 
   const handleDelete = async () => {
+    if (!token) {
+      alert('No autenticado');
+      return;
+    }
     setDeleting(true);
     try {
-      await filesApi.deleteFile({
-        owner,
-        repo,
-        filePath: path,
-        sha,
-        message: `Delete ${path}`,
-        branch,
-      });
+      await deleteFile(owner, repo, path, `Delete ${path}`, token, branch);
 
       // Navegar al directorio padre
       const parentPath = path.split('/').slice(0, -1).join('/');
@@ -79,39 +76,17 @@ export function FileActions({
     }
   };
 
-  const handleDownload = async () => {
-    try {
-      // Usar el endpoint real de descarga del API
-      const response = await filesApi.getRawFile({
-        owner,
-        repo,
-        path,
-        ref: branch,
-      });
-
-      // El response es un Blob
-      const blob = new Blob([response], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = path.split('/').pop() || 'file';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      // Fallback: descargar el contenido local
-      const blob = new Blob([content], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = path.split('/').pop() || 'file';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+  const handleDownload = () => {
+    // Descargar el contenido disponible
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = path.split('/').pop() || 'file';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (

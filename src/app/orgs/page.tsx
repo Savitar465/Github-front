@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
 import { getMyOrganizations } from "@/lib/services/organizations";
@@ -15,6 +15,20 @@ export default function OrgsPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  const loadOrgs = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const data = await getMyOrganizations();
+      setOrgs(data);
+    } catch (err) {
+      console.error("[OrgsPage] Error:", err);
+      setFetchError("No se pudo conectar con el servidor.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -24,20 +38,8 @@ export default function OrgsPage() {
       return;
     }
 
-    async function loadOrgs() {
-      try {
-        const data = await getMyOrganizations();
-        setOrgs(data);
-      } catch (err) {
-        console.error("[OrgsPage] Error:", err);
-        setFetchError("No se pudo conectar con el servidor.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadOrgs();
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, loadOrgs]);
 
   if (authLoading || loading) {
     return (

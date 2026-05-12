@@ -33,14 +33,22 @@ export default function NewFilePage() {
     // Codificar contenido a base64
     const contentBase64 = btoa(unescape(encodeURIComponent(data.content)));
 
-    await uploadFile(owner, repo, fullPath, token, {
-      content: contentBase64,
-      message: data.message,
-      branch,
-    });
+    console.log('[NewFile] Uploading file:', { owner, repo, fullPath, branch });
+    console.log('[NewFile] Token present:', !!token);
 
-    // Navegar al archivo creado
-    router.push(`/${owner}/${repo}/blob/${branch}/${fullPath}`);
+    try {
+      const result = await uploadFile(owner, repo, fullPath, token, {
+        content: contentBase64,
+        message: data.message,
+        branch,
+      });
+      console.log('[NewFile] Upload success:', result);
+      // Navegar al archivo creado
+      router.push(`/${owner}/${repo}/blob/${branch}/${fullPath}`);
+    } catch (err) {
+      console.error('[NewFile] Upload error:', err);
+      throw err;
+    }
   };
 
   const handleCancel = () => {

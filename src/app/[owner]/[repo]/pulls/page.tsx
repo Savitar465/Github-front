@@ -145,7 +145,7 @@ export default function PullRequestsPage() {
                         {pr.title}
                       </span>
                       {pr.hasConflicts && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
                           Conflictos
                         </span>
                       )}

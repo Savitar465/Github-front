@@ -1,10 +1,10 @@
 import { RepoHeader, BranchSelector, Breadcrumbs, CodeViewer } from '@/components/repo';
 import { FileActions } from '@/components/repo/file-actions';
-import { filesApi } from '@/lib/api';
+import { getFileContent as getFileContentApi } from '@/lib/api/repository-api';
 import { buildPageTitle } from '@/lib/build-page-title';
 import { Metadata } from 'next';
 
-// Removed embedded mock file contents — file content will be loaded from API at runtime.
+// Fetch file content from Repository API
 async function getFileContent(
   owner: string,
   repo: string,
@@ -12,12 +12,7 @@ async function getFileContent(
   branch: string
 ): Promise<{ content: string; size: number; sha: string } | null> {
   try {
-    const response = await filesApi.getFileContent({
-      owner,
-      repo,
-      filePath: path,
-      ref: branch,
-    });
+    const response = await getFileContentApi(owner, repo, path, undefined, branch);
 
     if (response.file?.content) {
       // Decodificar base64 (compatible con Node.js server-side)
@@ -44,8 +39,8 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-export default async function BlobPage({ params }: { params: { owner: string; repo: string; branch: string; path: string[] } }) {
-  const { owner, repo, branch, path } = params;
+export default async function BlobPage({ params }: { params: Promise<{ owner: string; repo: string; branch: string; path: string[] }> }) {
+  const { owner, repo, branch, path } = await params;
   const pathString = path.join('/');
   const filename = path[path.length - 1];
 

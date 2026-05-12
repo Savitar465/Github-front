@@ -15,19 +15,25 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
 
 export async function getMyOrganizations(): Promise<OrganizationDTO[]> {
   const url = `${API_BASE}/v1/user/orgs`;
-  console.log("[Orgs] getMyOrganizations llamando a:", url);
+  const headers = authHeaders();
+
+  console.log("[Orgs] ====== getMyOrganizations ======");
+  console.log("[Orgs] URL:", url);
+  console.log("[Orgs] API_BASE:", API_BASE);
+  console.log("[Orgs] Headers:", JSON.stringify(headers));
 
   try {
     const res = await fetch(url, {
       cache: "no-store",
-      headers: authHeaders(),
+      headers,
     });
-    console.log("[Orgs] Response status:", res.status);
+    console.log("[Orgs] Response status:", res.status, res.statusText);
+    console.log("[Orgs] Response headers:", JSON.stringify(Object.fromEntries(res.headers.entries())));
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("[Orgs] Error response:", errorText);
-      throw new Error("Error al obtener organizaciones");
+      console.error("[Orgs] Error response body:", errorText || "(vacío)");
+      throw new Error(`Error al obtener organizaciones (${res.status})`);
     }
     const data = await res.json();
     console.log("[Orgs] Data recibida:", data);
