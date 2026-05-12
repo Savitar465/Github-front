@@ -8,38 +8,80 @@ function getToken(): string {
 }
 
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  return { Authorization: `Bearer ${getToken()}`, ...extra };
+  const token = getToken();
+  console.log("[Orgs] Token presente:", !!token, token ? `${token.substring(0, 20)}...` : "null");
+  return { Authorization: `Bearer ${token}`, ...extra };
 }
 
 export async function getMyOrganizations(): Promise<OrganizationDTO[]> {
-  const res = await fetch(`${API_BASE}/v1/user/orgs`, {
-    cache: "no-store",
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error("Error al obtener organizaciones");
-  const data = await res.json();
-  return data.organizations;
+  const url = `${API_BASE}/v1/user/orgs`;
+  console.log("[Orgs] getMyOrganizations llamando a:", url);
+
+  try {
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: authHeaders(),
+    });
+    console.log("[Orgs] Response status:", res.status);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("[Orgs] Error response:", errorText);
+      throw new Error("Error al obtener organizaciones");
+    }
+    const data = await res.json();
+    console.log("[Orgs] Data recibida:", data);
+    return data.organizations;
+  } catch (err) {
+    console.error("[Orgs] Fetch error:", err);
+    throw err;
+  }
 }
 
 export async function createOrganization(
   payload: CreateOrganizationPayload
 ): Promise<OrganizationDTO> {
-  const res = await fetch(`${API_BASE}/v1/orgs`, {
-    method: "POST",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Error al crear organización");
-  return res.json();
+  const url = `${API_BASE}/v1/orgs`;
+  console.log("[Orgs] createOrganization llamando a:", url, payload);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify(payload),
+    });
+    console.log("[Orgs] Create response status:", res.status);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("[Orgs] Create error:", errorText);
+      throw new Error("Error al crear organización");
+    }
+    return res.json();
+  } catch (err) {
+    console.error("[Orgs] Create fetch error:", err);
+    throw err;
+  }
 }
 
 export async function deleteOrganization(orgName: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/v1/orgs/${orgName}`, {
-    method: "DELETE",
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Error al eliminar organización (${res.status}): ${body || "sin respuesta"}`);
+  const url = `${API_BASE}/v1/orgs/${orgName}`;
+  console.log("[Orgs] deleteOrganization llamando a:", url);
+
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: authHeaders(),
+    });
+    console.log("[Orgs] Delete response status:", res.status);
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[Orgs] Delete error:", body);
+      throw new Error(`Error al eliminar organización (${res.status}): ${body || "sin respuesta"}`);
+    }
+  } catch (err) {
+    console.error("[Orgs] Delete fetch error:", err);
+    throw err;
   }
 }
