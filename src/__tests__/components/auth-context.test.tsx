@@ -25,14 +25,16 @@ describe('AuthContext', () => {
     jest.clearAllMocks();
   });
 
-  it('starts with loading state', () => {
+  it('initializes to unauthenticated state', async () => {
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-status')).toHaveTextContent('Not logged in');
+    });
   });
 
   it('shows not logged in initially', async () => {

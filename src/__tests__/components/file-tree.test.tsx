@@ -41,9 +41,9 @@ describe('FileTree', () => {
       />
     );
 
-    const rows = screen.getAllByRole('row');
-    // First row should be the directory (src)
-    expect(rows[0]).toHaveTextContent('src');
+    const links = screen.getAllByRole('link');
+    // First rendered link should be the directory (src)
+    expect(links[0]).toHaveTextContent('src');
   });
 
   it('generates correct links for files and directories', () => {
@@ -90,6 +90,6 @@ describe('FileTree', () => {
     );
 
     // Should render without crashing
-    expect(screen.queryByRole('row')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

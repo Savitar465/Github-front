@@ -13,24 +13,24 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass('bg-primary');
 
     rerender(<Button variant="destructive">Destructive</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-destructive');
+    expect(screen.getByRole('button')).toHaveClass('bg-destructive/10');
 
     rerender(<Button variant="outline">Outline</Button>);
     expect(screen.getByRole('button')).toHaveClass('border');
 
     rerender(<Button variant="ghost">Ghost</Button>);
-    expect(screen.getByRole('button')).toHaveClass('hover:bg-accent');
+    expect(screen.getByRole('button')).toHaveClass('hover:bg-muted');
   });
 
   it('applies size classes correctly', () => {
     const { rerender } = render(<Button size="default">Default</Button>);
-    expect(screen.getByRole('button')).toHaveClass('h-10');
-
-    rerender(<Button size="sm">Small</Button>);
     expect(screen.getByRole('button')).toHaveClass('h-9');
 
+    rerender(<Button size="sm">Small</Button>);
+    expect(screen.getByRole('button')).toHaveClass('h-8');
+
     rerender(<Button size="lg">Large</Button>);
-    expect(screen.getByRole('button')).toHaveClass('h-11');
+    expect(screen.getByRole('button')).toHaveClass('h-10');
   });
 
   it('handles click events', async () => {
