@@ -1,3 +1,5 @@
+import { triggerUnauthorizedRedirect } from '@/lib/auth/global-auth-handler';
+
 function getRepositoryApiUrl(): string {
   const isServer = typeof window === 'undefined';
   const envUrl = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
@@ -116,6 +118,13 @@ async function repositoryRequest<T>(
   });
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      console.log('[RepositoryAPI] 401 Unauthorized - redirecting to login');
+      triggerUnauthorizedRedirect();
+      throw new Error('Unauthorized');
+    }
+
     const contentType = response.headers.get('content-type') || '';
     let errorMessage = `Repository API request failed (${response.status})`;
 
@@ -516,5 +525,49 @@ export function getCommit(owner: string, repo: string, sha: string, token?: stri
     `/v1/repos/${owner}/${repo}/commits/${sha}`,
     { method: 'GET' },
     token
+  );
+}
+
+// ============ Search API Functions ============
+
+export type SearchRepositoriesBody = {
+  repositories: RepositoryDTO[];
+  pagination: PaginationMeta;
+};
+
+export function searchRepositories(
+  token: string,
+  query: string,
+  params: { page?: number; perPage?: number } = {}
+) {
+  const searchParams = new URLSearchParams();
+  searchParams.set('q', query);
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+
+  return repositoryRequest<SearchRepositoriesBody>(
+    `/v1/repos/search?${searchParams.toString()}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export type ListPublicRepositoriesBody = {
+  repositories: RepositoryDTO[];
+  pagination: PaginationMeta;
+};
+
+export function listPublicRepositories(
+  params: { page?: number; perPage?: number; sort?: 'recent' | 'stars' | 'updated' } = {}
+) {
+  const searchParams = new URLSearchParams();
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+  if (params.sort) searchParams.set('sort', params.sort);
+
+  const query = searchParams.toString();
+  return repositoryRequest<ListPublicRepositoriesBody>(
+    `/v1/repos/public${query ? `?${query}` : ''}`,
+    { method: 'GET' }
   );
 }

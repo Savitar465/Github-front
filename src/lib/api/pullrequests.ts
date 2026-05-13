@@ -5,7 +5,8 @@
  * NO editar los archivos en pullrequest-client/ directamente.
  */
 
-import { Configuration, DefaultApi } from './pullrequest-client';
+import { Configuration, DefaultApi, Middleware, ResponseContext } from './pullrequest-client';
+import { triggerUnauthorizedRedirect } from '@/lib/auth/global-auth-handler';
 
 // Determinar la URL base del API según el entorno
 function getPullRequestApiUrl(): string {
@@ -34,6 +35,17 @@ function getAccessToken(): string | undefined {
   return localStorage.getItem(TOKEN_KEY) || undefined;
 }
 
+// Middleware para manejar errores 401 y redirigir al login
+const unauthorizedMiddleware: Middleware = {
+  post: async (context: ResponseContext): Promise<Response | void> => {
+    if (context.response.status === 401) {
+      console.log('[PullRequestsAPI] 401 Unauthorized - redirecting to login');
+      triggerUnauthorizedRedirect();
+    }
+    return context.response;
+  },
+};
+
 // Configuración del cliente con autenticación dinámica
 const configuration = new Configuration({
   basePath: getPullRequestApiUrl(),
@@ -41,6 +53,7 @@ const configuration = new Configuration({
     const token = getAccessToken();
     return token || '';
   },
+  middleware: [unauthorizedMiddleware],
 });
 
 // Instancia singleton del cliente
@@ -53,6 +66,30 @@ export function createPullRequestsApiClient(token?: string) {
     accessToken: token ? async () => token : undefined,
   });
   return new DefaultApi(config);
+}
+
+// Función para cerrar un PR (no está en el cliente generado)
+export async function closePullRequest(
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<void> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : undefined;
+  const basePath = getPullRequestApiUrl();
+
+  const response = await fetch(`${basePath}/v1/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ status: 'closed' }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Error al cerrar el pull request');
+  }
 }
 
 // Re-exportar tipos para uso conveniente

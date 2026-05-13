@@ -91,3 +91,37 @@ export async function deleteOrganization(orgName: string): Promise<void> {
     throw err;
   }
 }
+
+export type SearchOrganizationsResult = {
+  organizations: OrganizationDTO[];
+  pagination: {
+    page: number;
+    perPage: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export async function searchOrganizations(
+  query: string,
+  page: number = 1,
+  perPage: number = 20
+): Promise<SearchOrganizationsResult> {
+  const params = new URLSearchParams({
+    q: query,
+    page: String(page),
+    perPage: String(perPage),
+  });
+  const url = `${API_BASE}/v1/orgs/search?${params}`;
+
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al buscar organizaciones");
+  }
+
+  return res.json();
+}

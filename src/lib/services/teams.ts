@@ -79,6 +79,13 @@ export async function getTeamMembers(orgName: string, teamId: string): Promise<T
   return data.members;
 }
 
+export class NotOrgMemberError extends Error {
+  constructor(public username: string, public orgName: string) {
+    super(`El usuario "${username}" no es miembro de la organización. Debe agregarlo primero como miembro de la organización.`);
+    this.name = "NotOrgMemberError";
+  }
+}
+
 export async function addTeamMember(
   orgName: string,
   teamId: string,
@@ -88,7 +95,14 @@ export async function addTeamMember(
     `${API_BASE}/v1/orgs/${orgName}/teams/${teamId}/members/${username}`,
     { method: "PUT", headers: authHeaders() }
   );
-  if (!res.ok) throw new Error("Error al agregar miembro al equipo");
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    // Detectar si el error es porque el usuario no es miembro de la organización
+    if (text.includes("Miembro no encontrado") || text.includes("member not found")) {
+      throw new NotOrgMemberError(username, orgName);
+    }
+    throw new Error(text || "Error al agregar miembro al equipo");
+  }
 }
 
 export async function removeTeamMember(

@@ -7,6 +7,7 @@ import { pullRequestsApi } from '@/lib/api/pullrequests';
 import type { PullRequestDTO } from '@/lib/api/pullrequests';
 import { RepoHeader } from '@/components/repo';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -15,9 +16,9 @@ import {
   XCircle,
   Plus,
   Loader2,
-  MessageSquare,
   GitCommit,
   AlertCircle,
+  Search,
 } from 'lucide-react';
 
 type PrStatus = 'open' | 'closed' | 'merged';
@@ -37,10 +38,40 @@ export default function PullRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<PrStatus | 'all'>('open');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    loadPullRequests();
+    if (!searchQuery.trim()) {
+      loadPullRequests();
+    }
   }, [owner, repo, statusFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await pullRequestsApi.searchPullRequests({
+          owner,
+          repo,
+          q: searchQuery,
+          status: statusFilter === 'all' ? undefined : statusFilter,
+        });
+        setPullRequests(response.pullRequests || []);
+      } catch (err) {
+        console.error('Error searching pull requests:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, owner, repo, statusFilter]);
 
   const loadPullRequests = async () => {
     setLoading(true);
@@ -98,6 +129,21 @@ export default function PullRequestsPage() {
               Nuevo PR
             </Link>
           </Button>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar pull requests por título o descripción..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          )}
         </div>
 
         {/* Error */}

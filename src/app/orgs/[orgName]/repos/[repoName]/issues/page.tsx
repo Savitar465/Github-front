@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
@@ -22,14 +23,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function IssuesPage({ params }: Props) {
   const { orgName, repoName } = await params;
 
+  // Leer token desde cookies del servidor
+  const cookieStore = await cookies();
+  const token = cookieStore.get("github_clone_token")?.value;
+
   let initialIssues: IssueDTO[] = [];
   let fetchError: string | null = null;
 
   try {
-    const data = await listIssues(orgName, repoName);
+    const data = await listIssues(orgName, repoName, undefined, token);
     initialIssues = data.issues;
   } catch {
-    fetchError = "No se pudo conectar con el servidor de issues. Verifica que el backend esté corriendo en el puerto 8084.";
+    fetchError = "No se pudo conectar con el servidor de issues. Verifica que el backend esté corriendo en el puerto 8091.";
   }
 
   return (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { pullRequestsApi } from '@/lib/api/pullrequests';
+import { pullRequestsApi, closePullRequest } from '@/lib/api/pullrequests';
 import type { PullRequestDTO, PullRequestCommentDTO } from '@/lib/api/pullrequests';
 import { RepoHeader } from '@/components/repo';
 import { Button } from '@/components/ui/button';
@@ -66,6 +66,10 @@ export default function PullRequestDetailPage() {
   // Comment
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Close
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     loadPullRequest();
@@ -173,6 +177,20 @@ export default function PullRequestDetailPage() {
     }
   };
 
+  const handleClose = async () => {
+    setClosing(true);
+    try {
+      await closePullRequest(owner, repo, prNumber);
+      setCloseDialogOpen(false);
+      loadPullRequest();
+    } catch (err) {
+      console.error('Error closing PR:', err);
+      setError('Error al cerrar el pull request');
+    } finally {
+      setClosing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -253,6 +271,14 @@ export default function PullRequestDetailPage() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => setReviewDialogOpen(true)}>
                   Revisar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setCloseDialogOpen(true)}
+                  className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cerrar
                 </Button>
                 <Button
                   onClick={() => setMergeDialogOpen(true)}
@@ -480,6 +506,49 @@ export default function PullRequestDetailPage() {
                 <>
                   <GitMerge className="h-4 w-4" />
                   Confirmar merge
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de cerrar */}
+      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar Pull Request</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas cerrar este pull request? Esta acción se puede deshacer más tarde.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4 inline mr-2" />
+              El pull request se cerrará sin mergear los cambios.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloseDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleClose}
+              disabled={closing}
+              className="gap-2"
+            >
+              {closing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cerrando...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4" />
+                  Cerrar Pull Request
                 </>
               )}
             </Button>

@@ -11,10 +11,13 @@ import {
   KeycloakRolesControllerApi,
   KeycloakPermissionsControllerApi,
   KeycloakClientesControllerApi,
+  Middleware,
+  ResponseContext,
 } from './users-client';
+import { triggerUnauthorizedRedirect } from '@/lib/auth/global-auth-handler';
 
 // URL del backend de usuarios
-const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8082';
+const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081';
 
 // Token key para localStorage (debe coincidir con auth-context)
 const TOKEN_KEY = 'github_clone_token';
@@ -25,6 +28,17 @@ function getAccessToken(): string | undefined {
   return localStorage.getItem(TOKEN_KEY) || undefined;
 }
 
+// Middleware para manejar errores 401 y redirigir al login
+const unauthorizedMiddleware: Middleware = {
+  post: async (context: ResponseContext): Promise<Response | void> => {
+    if (context.response.status === 401) {
+      console.log('[UsersAPI] 401 Unauthorized - redirecting to login');
+      triggerUnauthorizedRedirect();
+    }
+    return context.response;
+  },
+};
+
 // Configuración del cliente con autenticación dinámica
 const configuration = new Configuration({
   basePath: USERS_API_URL,
@@ -32,6 +46,7 @@ const configuration = new Configuration({
     const token = getAccessToken();
     return token || '';
   },
+  middleware: [unauthorizedMiddleware],
 });
 
 // Instancias singleton de los clientes
