@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
@@ -34,8 +35,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const TOKEN_KEY = 'github_clone_token';
 const USER_KEY = 'github_clone_user';
 
-// URL del microservicio de usuarios
-const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081';
+// Relative path — proxied by Next.js rewrites to NEXT_PUBLIC_USERS_API_URL at runtime.
+const USERS_API_URL = '/api/users';
 
 // Configuración de Keycloak OIDC
 const KEYCLOAK_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL || 'http://localhost:8180';

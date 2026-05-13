@@ -17,7 +17,8 @@ import {
 import { triggerUnauthorizedRedirect } from '@/lib/auth/global-auth-handler';
 
 // URL del backend de usuarios
-const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081';
+// Relative path — Next.js rewrites proxy this to NEXT_PUBLIC_USERS_API_URL at runtime.
+const USERS_API_URL = '/api/users';
 
 // Token key para localStorage (debe coincidir con auth-context)
 const TOKEN_KEY = 'github_clone_token';

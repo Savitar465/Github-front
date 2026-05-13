@@ -49,6 +49,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Secret to File
+        uses: MobileDevOps/secret-to-file-action@v1.0.0
+        with:
+          base64-encoded-secret: ${{ secrets.FILE_CONTENT }}
+          filename: ".env"
+          is-executable: true
+          working-directory: "./"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -91,6 +99,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Secret to File
+        uses: MobileDevOps/secret-to-file-action@v1.0.0
+        with:
+          base64-encoded-secret: ${{ secrets.FILE_CONTENT }}
+          filename: ".env"
+          is-executable: true
+          working-directory: "./"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

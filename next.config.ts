@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    const usersApi = process.env.NEXT_PUBLIC_USERS_API_URL || 'http://localhost:8081';
     const filesApi = process.env.NEXT_PUBLIC_FILES_API_URL || 'http://localhost:8084/api';
     const repoApi = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
     const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || 'http://localhost:8085';
@@ -38,6 +39,10 @@ const nextConfig: NextConfig = {
     }
 
     return [
+      {
+        source: '/api/users/:path*',
+        destination: `${normalize(usersApi)}/:path*`,
+      },
       {
         source: '/api/files/:path*',
         destination: `${normalize(filesApi)}/:path*`,

@@ -19,8 +19,7 @@ coverage
 .DS_Store
 Thumbs.db
 
-# Environment files (use docker env vars instead)
-.env
+# Environment files
 .env.local
 .env.*.local
 
