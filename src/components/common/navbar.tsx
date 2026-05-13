@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Book, Menu, X, Users, Building, Disc, User } from 'lucide-react';
+import { LogOut, Book, Menu, X, Users, Building, Disc, User, FolderGit2 } from 'lucide-react';
 import { GithubIcon } from '@/components/icons/github-icon';
 import { useState } from 'react';
 
@@ -21,7 +21,8 @@ const publicLinks = [
   { href: '/users', label: 'Usuarios', icon: Users },
 ];
 const privateLinks = [
-  { href: '/orgs', label: 'Organizaciónes', icon: Building },
+  { href: '/my-repos', label: 'Mis Repos', icon: FolderGit2 },
+  { href: '/orgs', label: 'Organizaciones', icon: Building },
   { href: '/issues', label: 'Issues', icon: Disc },
 ];
 
@@ -95,6 +96,10 @@ export function Navbar() {
                     <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       Mi perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/my-repos')} className="cursor-pointer">
+                      <FolderGit2 className="mr-2 h-4 w-4" />
+                      Mis repositorios
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">

@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
-import { listRepositories, createRepository, searchRepositories, type RepositoryDTO, type RepositoryVisibility } from '@/lib/api/repository-api';
+import { listRepositories, createRepository, listPublicRepositories, type RepositoryDTO } from '@/lib/api/repository-api';
 
 const languageColors: Record<string, string> = {
   Java: 'bg-orange-500',
@@ -19,8 +19,6 @@ const languageColors: Record<string, string> = {
   Rust: 'bg-red-500',
 };
 
-type VisibilityFilter = 'all' | RepositoryVisibility;
-
 export function ReposClient() {
   const { token, isLoading: authLoading, isAuthenticated } = useAuth();
   const [repositories, setRepositories] = useState<RepositoryDTO[]>([]);
@@ -28,7 +26,6 @@ export function ReposClient() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>('all');
   // Create repository state
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
@@ -38,16 +35,9 @@ export function ReposClient() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  // Load user repositories when not searching
+  // Load repositories: public repos for everyone, user's repos if authenticated
   useEffect(() => {
     if (authLoading) {
-      return;
-    }
-
-    if (!isAuthenticated || !token) {
-      setRepositories([]);
-      setError('Inicia sesión para ver tus repositorios.');
-      setIsLoading(false);
       return;
     }
 
@@ -62,17 +52,38 @@ export function ReposClient() {
       setError(null);
 
       try {
-        const response = await listRepositories(token!, {
+        let allRepos: RepositoryDTO[] = [];
+
+        // Always fetch public repositories
+        const publicResponse = await listPublicRepositories({
           page: 1,
           perPage: 100,
-          visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
         });
+        allRepos = publicResponse.repositories || [];
+
+        // If authenticated, also fetch user's private repositories
+        if (isAuthenticated && token) {
+          try {
+            const userResponse = await listRepositories(token, {
+              page: 1,
+              perPage: 100,
+              visibility: 'private',
+            });
+            // Merge private repos with public repos (avoiding duplicates)
+            const privateRepos = userResponse.repositories || [];
+            const publicIds = new Set(allRepos.map(r => r.id));
+            const uniquePrivateRepos = privateRepos.filter(r => !publicIds.has(r.id));
+            allRepos = [...allRepos, ...uniquePrivateRepos];
+          } catch (privateErr) {
+            console.error('Error loading private repositories:', privateErr);
+          }
+        }
 
         if (cancelled) {
           return;
         }
 
-        setRepositories(response.repositories || []);
+        setRepositories(allRepos);
       } catch (requestError) {
         if (cancelled) {
           return;
@@ -95,30 +106,34 @@ export function ReposClient() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, token, searchTerm, visibilityFilter]);
+  }, [authLoading, isAuthenticated, token, searchTerm]);
 
-  // Debounced search
+  // Show searching indicator briefly when search term changes
   useEffect(() => {
-    if (!searchTerm.trim() || !token) {
+    if (!searchTerm.trim()) {
+      setIsSearching(false);
       return;
     }
 
-    const timeoutId = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const response = await searchRepositories(token, searchTerm, { page: 1, perPage: 50 });
-        setRepositories(response.repositories || []);
-      } catch (err) {
-        console.error('Error searching repositories:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+    setIsSearching(true);
+    const timeoutId = setTimeout(() => {
+      setIsSearching(false);
+    }, 200);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, token]);
+  }, [searchTerm]);
 
-  const filteredRepositories = repositories;
+  // Filter repositories based on search term
+  const filteredRepositories = searchTerm.trim()
+    ? repositories.filter(repo => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          repo.name.toLowerCase().includes(searchLower) ||
+          repo.fullName.toLowerCase().includes(searchLower) ||
+          (repo.description && repo.description.toLowerCase().includes(searchLower))
+        );
+      })
+    : repositories;
 
   return (
     <PageContainer
@@ -146,9 +161,15 @@ export function ReposClient() {
                     visibility,
                     initWithReadme,
                   });
-                  // refresh list
-                  const resp = await listRepositories(token!, { page: 1, perPage: 100 });
-                  setRepositories(resp.repositories || []);
+                  // refresh list - fetch both public and private repos
+                  const publicResponse = await listPublicRepositories({ page: 1, perPage: 100 });
+                  let allRepos = publicResponse.repositories || [];
+                  const userResponse = await listRepositories(token!, { page: 1, perPage: 100, visibility: 'private' });
+                  const privateRepos = userResponse.repositories || [];
+                  const publicIds = new Set(allRepos.map(r => r.id));
+                  const uniquePrivateRepos = privateRepos.filter(r => !publicIds.has(r.id));
+                  allRepos = [...allRepos, ...uniquePrivateRepos];
+                  setRepositories(allRepos);
                   setCreateOpen(false);
                   setName('');
                   setDescription('');
@@ -200,60 +221,32 @@ export function ReposClient() {
         </div>
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="relative flex w-full max-w-md items-center">
-            <Input
-              type="search"
-              placeholder="Buscar repositorios públicos..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full"
-            />
-            {isSearching && (
-              <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-muted-foreground" />
-            )}
-          </div>
-
-          {/* Filtros de visibilidad */}
-          <div className="flex items-center gap-1 border rounded-lg p-1">
-            {(['all', 'public', 'private'] as const).map((vis) => (
-              <Button
-                key={vis}
-                variant={visibilityFilter === vis ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setVisibilityFilter(vis)}
-                className="text-xs gap-1"
-              >
-                {vis === 'all' && 'Todos'}
-                {vis === 'public' && <><Globe className="h-3 w-3" /> Públicos</>}
-                {vis === 'private' && <><Lock className="h-3 w-3" /> Privados</>}
-              </Button>
-            ))}
-          </div>
+        <div className="relative flex w-full max-w-md items-center">
+          <Input
+            type="search"
+            placeholder="Buscar repositorios..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="w-full"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-muted-foreground" />
+          )}
         </div>
 
-        <Button className="gap-2 sm:self-start" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Nuevo repositorio
-        </Button>
+        {isAuthenticated && (
+          <Button className="gap-2 sm:self-start" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Nuevo repositorio
+          </Button>
+        )}
       </div>
 
       {authLoading || isLoading ? (
         <div className="flex items-center gap-3 rounded-3xl border border-dashed px-4 py-10 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          Cargando repositorios desde el backend...
+          Cargando repositorios...
         </div>
-      ) : error && !isAuthenticated ? (
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <div className="mt-4">
-              <Button asChild>
-                <Link href="/login">Iniciar sesión</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       ) : error ? (
         <Card>
           <CardContent className="p-6">

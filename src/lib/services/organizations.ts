@@ -1,6 +1,6 @@
 import type { CreateOrganizationPayload, OrganizationDTO } from "@/types/organization";
 
-const API_BASE = process.env.NEXT_PUBLIC_ORG_API_URL ?? "http://localhost:8083";
+const API_BASE = process.env.NEXT_PUBLIC_ORG_API_URL ?? "http://localhost:8085";
 
 function getToken(): string {
   if (typeof window === "undefined") return "";

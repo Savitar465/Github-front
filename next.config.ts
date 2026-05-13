@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     const filesApi = process.env.NEXT_PUBLIC_FILES_API_URL || 'http://localhost:8084/api';
     const repoApi = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
     const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || 'http://localhost:8085';
-    const orgApi = process.env.NEXT_PUBLIC_ORG_API_URL || 'http://localhost:8083';
+    const orgApi = process.env.NEXT_PUBLIC_ORG_API_URL || 'http://localhost:8085';
     const pullRequestApi = process.env.NEXT_PUBLIC_PR_API_URL || 'http://localhost:8082/api';
 
     // eslint-disable-next-line no-console
