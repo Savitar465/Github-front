@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { GitCommit, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { CommitDTO } from '@/lib/api';
+import type { CommitDTO } from '@/lib/api/repository-api';
 
 type CommitListProps = {
   commits: CommitDTO[];

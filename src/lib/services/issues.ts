@@ -16,20 +16,25 @@ const API_BASE =
     ? (process.env.NEXT_PUBLIC_ISSUES_API_URL ?? "")
     : "/issues";
 
-function getToken(): string {
+function getClientToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("github_clone_token") || "";
 }
 
-function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const token = getToken();
-  return { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra };
+function buildAuthHeaders(token?: string, extra?: Record<string, string>): Record<string, string> {
+  const authToken = token || getClientToken();
+  if (authToken) {
+    return { Authorization: `Bearer ${authToken}`, ...extra };
+  }
+  return extra || {};
 }
 
+// Server-side function accepts token parameter
 export async function listIssues(
   owner: string,
   repo: string,
-  params?: { state?: string; label?: string; assignee?: string; page?: number; perPage?: number }
+  params?: { state?: string; label?: string; assignee?: string; page?: number; perPage?: number },
+  token?: string
 ): Promise<ListIssuesBody> {
   const query = new URLSearchParams();
   if (params?.state) query.set("state", params.state);
@@ -38,12 +43,29 @@ export async function listIssues(
   if (params?.page) query.set("page", String(params.page));
   if (params?.perPage) query.set("perPage", String(params.perPage));
   const qs = query.toString();
-  const res = await fetch(
-    `${API_BASE}/v1/repos/${owner}/${repo}/issues${qs ? `?${qs}` : ""}`,
-    { cache: "no-store", headers: authHeaders() }
-  );
-  if (!res.ok) throw new Error("Error al obtener issues");
-  return res.json();
+  const url = `${API_BASE}/v1/repos/${owner}/${repo}/issues${qs ? `?${qs}` : ""}`;
+
+  console.log("[Issues] ====== listIssues ======");
+  console.log("[Issues] API_BASE:", API_BASE);
+  console.log("[Issues] URL:", url);
+  console.log("[Issues] isServer:", typeof window === "undefined");
+  console.log("[Issues] Has token param:", !!token);
+
+  try {
+    const headers = buildAuthHeaders(token);
+    console.log("[Issues] Has auth header:", !!headers.Authorization);
+    const res = await fetch(url, { cache: "no-store", headers });
+    console.log("[Issues] Response status:", res.status);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("[Issues] Error response:", errorText);
+      throw new Error("Error al obtener issues");
+    }
+    return res.json();
+  } catch (err) {
+    console.error("[Issues] Fetch error:", err);
+    throw err;
+  }
 }
 
 export async function createIssue(
@@ -51,9 +73,10 @@ export async function createIssue(
   repo: string,
   payload: CreateIssuePayload
 ): Promise<IssueDTO> {
+  const headers = buildAuthHeaders(undefined, { "Content-Type": "application/json" });
   const res = await fetch(`${API_BASE}/v1/repos/${owner}/${repo}/issues`, {
     method: "POST",
-    headers: authHeaders({ "Content-Type": "application/json" }),
+    headers,
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Error al crear issue");
@@ -63,11 +86,13 @@ export async function createIssue(
 export async function getIssue(
   owner: string,
   repo: string,
-  issueNumber: number
+  issueNumber: number,
+  token?: string
 ): Promise<IssueDTO> {
+  const headers = buildAuthHeaders(token);
   const res = await fetch(
     `${API_BASE}/v1/repos/${owner}/${repo}/issues/${issueNumber}`,
-    { cache: "no-store", headers: authHeaders() }
+    { cache: "no-store", headers }
   );
   if (!res.ok) throw new Error("Error al obtener issue");
   return res.json();
@@ -79,11 +104,12 @@ export async function updateIssue(
   issueNumber: number,
   payload: UpdateIssuePayload
 ): Promise<IssueDTO> {
+  const headers = buildAuthHeaders(undefined, { "Content-Type": "application/json" });
   const res = await fetch(
     `${API_BASE}/v1/repos/${owner}/${repo}/issues/${issueNumber}`,
     {
       method: "PATCH",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers,
       body: JSON.stringify(payload),
     }
   );
@@ -94,11 +120,13 @@ export async function updateIssue(
 export async function listIssueComments(
   owner: string,
   repo: string,
-  issueNumber: number
+  issueNumber: number,
+  token?: string
 ): Promise<ListIssueCommentsBody> {
+  const headers = buildAuthHeaders(token);
   const res = await fetch(
     `${API_BASE}/v1/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-    { cache: "no-store", headers: authHeaders() }
+    { cache: "no-store", headers }
   );
   if (!res.ok) throw new Error("Error al obtener comentarios");
   return res.json();
@@ -110,11 +138,12 @@ export async function createIssueComment(
   issueNumber: number,
   payload: CreateCommentPayload
 ): Promise<CommentDTO> {
+  const headers = buildAuthHeaders(undefined, { "Content-Type": "application/json" });
   const res = await fetch(
     `${API_BASE}/v1/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
     {
       method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers,
       body: JSON.stringify(payload),
     }
   );
@@ -122,10 +151,15 @@ export async function createIssueComment(
   return res.json();
 }
 
-export async function listLabels(owner: string, repo: string): Promise<ListLabelsBody> {
+export async function listLabels(
+  owner: string,
+  repo: string,
+  token?: string
+): Promise<ListLabelsBody> {
+  const headers = buildAuthHeaders(token);
   const res = await fetch(
     `${API_BASE}/v1/repos/${owner}/${repo}/labels`,
-    { cache: "no-store", headers: authHeaders() }
+    { cache: "no-store", headers }
   );
   if (!res.ok) throw new Error("Error al obtener labels");
   return res.json();
@@ -136,9 +170,10 @@ export async function createLabel(
   repo: string,
   payload: CreateLabelPayload
 ): Promise<LabelDTO> {
+  const headers = buildAuthHeaders(undefined, { "Content-Type": "application/json" });
   const res = await fetch(`${API_BASE}/v1/repos/${owner}/${repo}/labels`, {
     method: "POST",
-    headers: authHeaders({ "Content-Type": "application/json" }),
+    headers,
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("Error al crear label");

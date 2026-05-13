@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { pullRequestsApi } from '@/lib/api/pullrequests';
+import { pullRequestsApi, closePullRequest } from '@/lib/api/pullrequests';
 import type { PullRequestDTO, PullRequestCommentDTO } from '@/lib/api/pullrequests';
+import { compareBranches, type BranchCompareResponse } from '@/lib/api/repository-api';
 import { RepoHeader } from '@/components/repo';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,10 +32,14 @@ import {
   GitBranch,
   User,
   Calendar,
+  FileCode,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 type ReviewDecision = 'approved' | 'changes_requested' | 'commented';
 type MergeStrategy = 'merge' | 'squash' | 'rebase';
+type ActiveTab = 'conversation' | 'commits' | 'files';
 
 export default function PullRequestDetailPage() {
   const params = useParams();
@@ -47,8 +52,10 @@ export default function PullRequestDetailPage() {
 
   const [pr, setPr] = useState<PullRequestDTO | null>(null);
   const [comments, setComments] = useState<PullRequestCommentDTO[]>([]);
+  const [compareData, setCompareData] = useState<BranchCompareResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('conversation');
 
   // Review
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -66,6 +73,10 @@ export default function PullRequestDetailPage() {
   // Comment
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // Close
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     loadPullRequest();
@@ -87,11 +98,25 @@ export default function PullRequestDetailPage() {
           // Ignorar error de mergeability
         }
       }
+
+      // Cargar comparación de ramas
+      if (response.sourceBranch && response.targetBranch) {
+        loadCompareData(response.targetBranch, response.sourceBranch);
+      }
     } catch (err) {
       console.error('Error loading PR:', err);
       setError('Error al cargar el pull request');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCompareData = async (base: string, head: string) => {
+    try {
+      const data = await compareBranches(owner, repo, base, head);
+      setCompareData(data);
+    } catch (err) {
+      console.error('Error loading compare data:', err);
     }
   };
 
@@ -170,6 +195,20 @@ export default function PullRequestDetailPage() {
       setError('Error al crear el comentario');
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleClose = async () => {
+    setClosing(true);
+    try {
+      await closePullRequest(owner, repo, prNumber);
+      setCloseDialogOpen(false);
+      loadPullRequest();
+    } catch (err) {
+      console.error('Error closing PR:', err);
+      setError('Error al cerrar el pull request');
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -255,6 +294,14 @@ export default function PullRequestDetailPage() {
                   Revisar
                 </Button>
                 <Button
+                  variant="outline"
+                  onClick={() => setCloseDialogOpen(true)}
+                  className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cerrar
+                </Button>
+                <Button
                   onClick={() => setMergeDialogOpen(true)}
                   disabled={!mergeability?.mergeable}
                   className="gap-2"
@@ -304,7 +351,50 @@ export default function PullRequestDetailPage() {
           )}
         </div>
 
-        {/* Comentarios */}
+        {/* Tabs */}
+        <div className="border-b mb-6">
+          <div className="flex gap-6">
+            <button
+              onClick={() => setActiveTab('conversation')}
+              className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'conversation'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Conversación
+              <span className="bg-muted px-2 py-0.5 rounded-full text-xs">{comments.length}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('commits')}
+              className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'commits'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <GitCommit className="h-4 w-4" />
+              Commits
+              <span className="bg-muted px-2 py-0.5 rounded-full text-xs">{compareData?.totalCommits || pr?.commitsCount || 0}</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('files')}
+              className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors ${
+                activeTab === 'files'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <FileCode className="h-4 w-4" />
+              Archivos cambiados
+              <span className="bg-muted px-2 py-0.5 rounded-full text-xs">{compareData?.filesChanged || 0}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content: Conversación */}
+        {activeTab === 'conversation' && (
         <div className="border rounded-lg">
           <div className="px-4 py-3 border-b bg-muted/30">
             <h2 className="font-semibold flex items-center gap-2">
@@ -369,6 +459,125 @@ export default function PullRequestDetailPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* Tab Content: Commits */}
+        {activeTab === 'commits' && (
+          <div className="border rounded-lg">
+            <div className="px-4 py-3 border-b bg-muted/30">
+              <h2 className="font-semibold flex items-center gap-2">
+                <GitCommit className="h-4 w-4" />
+                Commits ({compareData?.totalCommits || 0})
+              </h2>
+            </div>
+            <div className="divide-y">
+              {!compareData || compareData.commits.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground">
+                  No hay commits para mostrar
+                </div>
+              ) : (
+                compareData.commits.map((commit) => (
+                  <div key={commit.sha} className="p-4 hover:bg-muted/30">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{commit.message}</p>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {commit.author}
+                          </span>
+                          <span>•</span>
+                          <span>{commit.timestamp && formatDistanceToNow(new Date(commit.timestamp), { addSuffix: true, locale: es })}</span>
+                        </div>
+                      </div>
+                      <code className="text-xs font-mono bg-muted px-2 py-1 rounded shrink-0">
+                        {commit.shortSha}
+                      </code>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Archivos cambiados */}
+        {activeTab === 'files' && (
+          <div className="space-y-4">
+            {/* Resumen */}
+            {compareData && (
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  {compareData.filesChanged} archivos cambiados
+                </span>
+                <span className="flex items-center gap-1 text-green-600">
+                  <Plus className="h-3 w-3" />
+                  {compareData.additions} adiciones
+                </span>
+                <span className="flex items-center gap-1 text-red-600">
+                  <Minus className="h-3 w-3" />
+                  {compareData.deletions} eliminaciones
+                </span>
+              </div>
+            )}
+
+            {/* Lista de archivos */}
+            <div className="border rounded-lg divide-y">
+              {!compareData || compareData.files.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground">
+                  No hay archivos cambiados
+                </div>
+              ) : (
+                compareData.files.map((file, index) => (
+                  <div key={index} className="divide-y">
+                    {/* Header del archivo */}
+                    <div className="px-4 py-2 bg-muted/30 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-mono text-sm">{file.path}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          file.changeType === 'ADD' ? 'bg-green-500/20 text-green-700' :
+                          file.changeType === 'DELETE' ? 'bg-red-500/20 text-red-700' :
+                          file.changeType === 'RENAME' ? 'bg-blue-500/20 text-blue-700' :
+                          'bg-amber-500/20 text-amber-700'
+                        }`}>
+                          {file.changeType === 'ADD' ? 'Nuevo' :
+                           file.changeType === 'DELETE' ? 'Eliminado' :
+                           file.changeType === 'RENAME' ? 'Renombrado' :
+                           'Modificado'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-green-600">+{file.additions}</span>
+                        <span className="text-red-600">-{file.deletions}</span>
+                      </div>
+                    </div>
+                    {/* Diff del archivo */}
+                    {file.patch && (
+                      <div className="overflow-x-auto">
+                        <pre className="text-xs font-mono p-4 bg-muted/10">
+                          {file.patch.split('\n').map((line, lineIndex) => (
+                            <div
+                              key={lineIndex}
+                              className={`${
+                                line.startsWith('+') && !line.startsWith('+++') ? 'bg-green-500/20 text-green-800 dark:text-green-300' :
+                                line.startsWith('-') && !line.startsWith('---') ? 'bg-red-500/20 text-red-800 dark:text-red-300' :
+                                line.startsWith('@@') ? 'bg-blue-500/20 text-blue-800 dark:text-blue-300' :
+                                ''
+                              }`}
+                            >
+                              {line}
+                            </div>
+                          ))}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dialog de revisión */}
@@ -480,6 +689,49 @@ export default function PullRequestDetailPage() {
                 <>
                   <GitMerge className="h-4 w-4" />
                   Confirmar merge
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de cerrar */}
+      <Dialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar Pull Request</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas cerrar este pull request? Esta acción se puede deshacer más tarde.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-sm text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4 inline mr-2" />
+              El pull request se cerrará sin mergear los cambios.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloseDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleClose}
+              disabled={closing}
+              className="gap-2"
+            >
+              {closing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Cerrando...
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4" />
+                  Cerrar Pull Request
                 </>
               )}
             </Button>

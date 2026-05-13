@@ -5,6 +5,7 @@ export { CodeViewer } from './code-viewer';
 export { CommitList } from './commit-list';
 export { RepoHeader } from './repo-header';
 export { BranchSelector } from './branch-selector';
+export { BranchManager } from './branch-manager';
 export { DiffViewer } from './diff-viewer';
 export { FileEditor } from './file-editor';
 export { FileActions } from './file-actions';

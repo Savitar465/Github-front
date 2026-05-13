@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { PageContainer } from "@/components/common/page-container";
@@ -13,8 +14,11 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { orgName, repoName, issueNumber } = await params;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("github_clone_token")?.value;
+
   try {
-    const issue = await getIssue(orgName, repoName, parseInt(issueNumber, 10));
+    const issue = await getIssue(orgName, repoName, parseInt(issueNumber, 10), token);
     return { title: buildPageTitle(`#${issueNumber} ${issue.title} · ${orgName}/${repoName}`) };
   } catch {
     return { title: buildPageTitle(`Issue #${issueNumber}`) };
@@ -25,14 +29,18 @@ export default async function IssueDetailPage({ params }: Props) {
   const { orgName, repoName, issueNumber } = await params;
   const num = parseInt(issueNumber, 10);
 
+  // Leer token desde cookies del servidor
+  const cookieStore = await cookies();
+  const token = cookieStore.get("github_clone_token")?.value;
+
   let issue = null;
   let initialComments: CommentDTO[] = [];
   let fetchError: string | null = null;
 
   try {
     const [issueData, commentsData] = await Promise.all([
-      getIssue(orgName, repoName, num),
-      listIssueComments(orgName, repoName, num),
+      getIssue(orgName, repoName, num, token),
+      listIssueComments(orgName, repoName, num, token),
     ]);
     issue = issueData;
     initialComments = commentsData.comments;

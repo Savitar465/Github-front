@@ -1,10 +1,10 @@
 'use client';
 
-import { File, Plus, Minus, FileEdit } from 'lucide-react';
-import type { CommitFile } from '@/lib/api';
+import { File, Plus, Minus } from 'lucide-react';
+import type { CommitFileChangeDTO } from '@/lib/api/repository-api';
 
 type DiffViewerProps = {
-  files: CommitFile[];
+  files: CommitFileChangeDTO[];
 };
 
 export function DiffViewer({ files }: DiffViewerProps) {
@@ -33,7 +33,7 @@ export function DiffViewer({ files }: DiffViewerProps) {
   );
 }
 
-function FileDiff({ file }: { file: CommitFile }) {
+function FileDiff({ file }: { file: CommitFileChangeDTO }) {
   const statusColors: Record<string, string> = {
     added: 'text-green-500 bg-green-500/10',
     modified: 'text-yellow-500 bg-yellow-500/10',

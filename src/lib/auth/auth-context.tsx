@@ -1,7 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { UserManager, User as OidcUser, WebStorageStateStore } from 'oidc-client-ts';
+import { useRouter } from 'next/navigation';
+import { setupGlobalAuthHandler } from './global-auth-handler';
 
 type User = {
   id: string;
@@ -23,6 +25,8 @@ type AuthContextType = AuthState & {
   logout: () => void;
   getToken: () => string | null;
   loginWithKeycloak: () => Promise<void>;
+  handleUnauthorized: () => void;
+  isTokenExpired: () => boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -73,13 +77,53 @@ function parseOidcUser(oidcUser: OidcUser): User {
   };
 }
 
+// Helper function to check if JWT token is expired
+function isJwtExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return false;
+
+    // Check if token expires in less than 30 seconds (buffer time)
+    const expiresAt = payload.exp * 1000;
+    return Date.now() >= expiresAt - 30000;
+  } catch {
+    return true;
+  }
+}
+
+// Helper para guardar/eliminar token en cookie via API
+async function setTokenCookie(token: string): Promise<void> {
+  try {
+    await fetch('/api/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+  } catch (error) {
+    console.error('[Auth] Error setting token cookie:', error);
+  }
+}
+
+async function deleteTokenCookie(): Promise<void> {
+  try {
+    await fetch('/api/auth/token', { method: 'DELETE' });
+  } catch (error) {
+    console.error('[Auth] Error deleting token cookie:', error);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [state, setState] = useState<AuthState>({
     user: null,
     token: null,
     isLoading: true,
     isAuthenticated: false,
   });
+  const hasRedirected = useRef(false);
 
   // Cargar sesión existente
   useEffect(() => {
@@ -181,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         localStorage.setItem(TOKEN_KEY, data.access_token);
         localStorage.setItem(USER_KEY, JSON.stringify(user));
+        await setTokenCookie(data.access_token);
 
         setState({
           user,
@@ -204,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           localStorage.setItem(TOKEN_KEY, mockToken);
           localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
+          await setTokenCookie(mockToken);
 
           setState({
             user: mockUser,
@@ -250,6 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         localStorage.setItem(TOKEN_KEY, data.access_token);
         localStorage.setItem(USER_KEY, JSON.stringify(user));
+        await setTokenCookie(data.access_token);
 
         setState({
           user,
@@ -279,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    await deleteTokenCookie();
     setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
   }, []);
 
@@ -286,8 +334,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return state.token;
   }, [state.token]);
 
+  // Check if current token is expired
+  const isTokenExpired = useCallback(() => {
+    if (!state.token) return true;
+    return isJwtExpired(state.token);
+  }, [state.token]);
+
+  // Handle 401 Unauthorized - redirect to login
+  const handleUnauthorized = useCallback(() => {
+    if (hasRedirected.current) return;
+    hasRedirected.current = true;
+
+    console.log('[Auth] Token expired or unauthorized, redirecting to login...');
+
+    // Clear auth state
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    deleteTokenCookie(); // Fire and forget
+    setState({ user: null, token: null, isLoading: false, isAuthenticated: false });
+
+    // Redirect to login
+    router.push('/login');
+
+    // Reset redirect flag after a delay
+    setTimeout(() => {
+      hasRedirected.current = false;
+    }, 2000);
+  }, [router]);
+
+  // Setup Keycloak event listeners for token expiration
+  useEffect(() => {
+    if (!USE_KEYCLOAK) return;
+
+    const um = getUserManager();
+    if (!um) return;
+
+    // Token expired event
+    const handleTokenExpired = () => {
+      console.log('[Auth] Keycloak token expired');
+      handleUnauthorized();
+    };
+
+    // Silent renew error event
+    const handleSilentRenewError = (error: Error) => {
+      console.error('[Auth] Silent renew failed:', error);
+      handleUnauthorized();
+    };
+
+    um.events.addAccessTokenExpired(handleTokenExpired);
+    um.events.addSilentRenewError(handleSilentRenewError);
+
+    return () => {
+      um.events.removeAccessTokenExpired(handleTokenExpired);
+      um.events.removeSilentRenewError(handleSilentRenewError);
+    };
+  }, [handleUnauthorized]);
+
+  // Periodic token expiration check (for non-Keycloak mode)
+  useEffect(() => {
+    if (USE_KEYCLOAK || !state.isAuthenticated || !state.token) return;
+
+    const checkInterval = setInterval(() => {
+      if (isJwtExpired(state.token!)) {
+        console.log('[Auth] Token expired (periodic check)');
+        handleUnauthorized();
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [state.isAuthenticated, state.token, handleUnauthorized]);
+
+  // Setup global auth handler for non-hook API calls
+  useEffect(() => {
+    setupGlobalAuthHandler(handleUnauthorized);
+  }, [handleUnauthorized]);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, getToken, loginWithKeycloak }}>
+    <AuthContext.Provider value={{ ...state, login, logout, getToken, loginWithKeycloak, handleUnauthorized, isTokenExpired }}>
       {children}
     </AuthContext.Provider>
   );

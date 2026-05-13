@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
-import { listRepositories, createRepository, type RepositoryDTO } from '@/lib/api/repository-api';
+import { listRepositories, createRepository, searchRepositories, type RepositoryDTO, type RepositoryVisibility } from '@/lib/api/repository-api';
 
 const languageColors: Record<string, string> = {
   Java: 'bg-orange-500',
@@ -19,12 +19,16 @@ const languageColors: Record<string, string> = {
   Rust: 'bg-red-500',
 };
 
+type VisibilityFilter = 'all' | RepositoryVisibility;
+
 export function ReposClient() {
   const { token, isLoading: authLoading, isAuthenticated } = useAuth();
   const [repositories, setRepositories] = useState<RepositoryDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>('all');
   // Create repository state
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
@@ -34,6 +38,7 @@ export function ReposClient() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  // Load user repositories when not searching
   useEffect(() => {
     if (authLoading) {
       return;
@@ -46,6 +51,10 @@ export function ReposClient() {
       return;
     }
 
+    if (searchTerm.trim()) {
+      return; // Skip loading when searching
+    }
+
     let cancelled = false;
 
     async function loadRepositories() {
@@ -53,7 +62,11 @@ export function ReposClient() {
       setError(null);
 
       try {
-        const response = await listRepositories(token!, { page: 1, perPage: 100 });
+        const response = await listRepositories(token!, {
+          page: 1,
+          perPage: 100,
+          visibility: visibilityFilter === 'all' ? undefined : visibilityFilter,
+        });
 
         if (cancelled) {
           return;
@@ -82,16 +95,30 @@ export function ReposClient() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, token]);
+  }, [authLoading, isAuthenticated, token, searchTerm, visibilityFilter]);
 
-  const filteredRepositories = repositories.filter((repo) => {
-    const haystack = [repo.fullName, repo.description, repo.language, repo.visibility]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
+  // Debounced search
+  useEffect(() => {
+    if (!searchTerm.trim() || !token) {
+      return;
+    }
 
-    return haystack.includes(searchTerm.toLowerCase());
-  });
+    const timeoutId = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await searchRepositories(token, searchTerm, { page: 1, perPage: 50 });
+        setRepositories(response.repositories || []);
+      } catch (err) {
+        console.error('Error searching repositories:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, token]);
+
+  const filteredRepositories = repositories;
 
   return (
     <PageContainer
@@ -173,14 +200,36 @@ export function ReposClient() {
         </div>
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full max-w-md items-center gap-3">
-          <Input
-            type="search"
-            placeholder="Buscar repositorio..."
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative flex w-full max-w-md items-center">
+            <Input
+              type="search"
+              placeholder="Buscar repositorios públicos..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-full"
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
+          {/* Filtros de visibilidad */}
+          <div className="flex items-center gap-1 border rounded-lg p-1">
+            {(['all', 'public', 'private'] as const).map((vis) => (
+              <Button
+                key={vis}
+                variant={visibilityFilter === vis ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setVisibilityFilter(vis)}
+                className="text-xs gap-1"
+              >
+                {vis === 'all' && 'Todos'}
+                {vis === 'public' && <><Globe className="h-3 w-3" /> Públicos</>}
+                {vis === 'private' && <><Lock className="h-3 w-3" /> Privados</>}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <Button className="gap-2 sm:self-start" onClick={() => setCreateOpen(true)}>

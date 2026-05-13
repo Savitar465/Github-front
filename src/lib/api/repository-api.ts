@@ -1,3 +1,5 @@
+import { triggerUnauthorizedRedirect } from '@/lib/auth/global-auth-handler';
+
 function getRepositoryApiUrl(): string {
   const isServer = typeof window === 'undefined';
   const envUrl = process.env.NEXT_PUBLIC_REPOSITORY_API_URL || '/api/repository';
@@ -116,6 +118,13 @@ async function repositoryRequest<T>(
   });
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      console.log('[RepositoryAPI] 401 Unauthorized - redirecting to login');
+      triggerUnauthorizedRedirect();
+      throw new Error('Unauthorized');
+    }
+
     const contentType = response.headers.get('content-type') || '';
     let errorMessage = `Repository API request failed (${response.status})`;
 
@@ -230,7 +239,7 @@ export function getBranch(owner: string, repo: string, branch: string, token?: s
 
 export type CreateBranchBody = {
   name: string;
-  source?: string; // branch or commit sha to branch from (defaults to defaultBranch)
+  fromBranch: string; // branch name to branch from
 };
 
 // Create a new branch from a source (branch name or commit sha)
@@ -441,4 +450,124 @@ export function compareBranches(
     }
     return response.json() as Promise<BranchCompareResponse>;
   });
+}
+
+// ============ Commits API Types ============
+
+export type CommitAuthorDTO = {
+  name: string;
+  email: string;
+  date: string;
+};
+
+export type CommitFileChangeDTO = {
+  filename: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'copied';
+  additions: number;
+  deletions: number;
+  patch?: string;
+  previousFilename?: string;
+};
+
+export type CommitDTO = {
+  sha: string;
+  shortSha: string;
+  message: string;
+  title: string;
+  description?: string;
+  author: CommitAuthorDTO;
+  committer: CommitAuthorDTO;
+  authorDate: string;
+  committerDate: string;
+  parentShas: string[];
+  files?: CommitFileChangeDTO[];
+  additions?: number;
+  deletions?: number;
+  filesChanged?: number;
+};
+
+export type CommitPaginationInfo = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ListCommitsResponse = {
+  commits: CommitDTO[];
+  pagination: CommitPaginationInfo;
+};
+
+// ============ Commits API Functions ============
+
+export function listCommits(
+  owner: string,
+  repo: string,
+  params: { branch?: string; path?: string; page?: number; perPage?: number } = {},
+  token?: string
+) {
+  const searchParams = new URLSearchParams();
+  if (params.branch) searchParams.set('branch', params.branch);
+  if (params.path) searchParams.set('path', params.path);
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+
+  const query = searchParams.toString();
+  return repositoryRequest<ListCommitsResponse>(
+    `/v1/repos/${owner}/${repo}/commits${query ? `?${query}` : ''}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export function getCommit(owner: string, repo: string, sha: string, token?: string) {
+  return repositoryRequest<CommitDTO>(
+    `/v1/repos/${owner}/${repo}/commits/${sha}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+// ============ Search API Functions ============
+
+export type SearchRepositoriesBody = {
+  repositories: RepositoryDTO[];
+  pagination: PaginationMeta;
+};
+
+export function searchRepositories(
+  token: string,
+  query: string,
+  params: { page?: number; perPage?: number } = {}
+) {
+  const searchParams = new URLSearchParams();
+  searchParams.set('q', query);
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+
+  return repositoryRequest<SearchRepositoriesBody>(
+    `/v1/repos/search?${searchParams.toString()}`,
+    { method: 'GET' },
+    token
+  );
+}
+
+export type ListPublicRepositoriesBody = {
+  repositories: RepositoryDTO[];
+  pagination: PaginationMeta;
+};
+
+export function listPublicRepositories(
+  params: { page?: number; perPage?: number; sort?: 'recent' | 'stars' | 'updated' } = {}
+) {
+  const searchParams = new URLSearchParams();
+  if (typeof params.page === 'number') searchParams.set('page', String(params.page));
+  if (typeof params.perPage === 'number') searchParams.set('perPage', String(params.perPage));
+  if (params.sort) searchParams.set('sort', params.sort);
+
+  const query = searchParams.toString();
+  return repositoryRequest<ListPublicRepositoriesBody>(
+    `/v1/repos/public${query ? `?${query}` : ''}`,
+    { method: 'GET' }
+  );
 }
