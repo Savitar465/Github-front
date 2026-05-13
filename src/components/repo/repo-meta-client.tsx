@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { GitBranch } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { getRepository, type RepositoryDTO, listBranches, listCollaborators, type BranchDTO, type CollaboratorDTO, type ListBranchesBody, type ListCollaboratorsBody, uploadFile } from '@/lib/api/repository-api';
 import type { DirectoryEntryDTO } from '@/lib/api/github-files-client/src/models/DirectoryEntryDTO';
@@ -32,6 +33,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
   const [branchesList, setBranchesList] = useState<BranchDTO[]>([]);
   const [loadedEntries, setLoadedEntries] = useState<DirectoryEntryDTO[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [currentBranch, setCurrentBranch] = useState<string | null>(null);
 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -63,6 +65,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
           const json = (await resp.json()) as RepositoryDTO;
             if (!cancelled) {
               setData(json);
+              setCurrentBranch(json.defaultBranch || 'main');
               try {
                 const bRes = await listBranches(owner, repo, undefined).catch(() => ({ branches: [] } as ListBranchesBody));
                 if (!cancelled) setBranchesList(bRes.branches || []);
@@ -74,6 +77,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
         const repoData = await getRepository(owner, repo, token);
           if (!cancelled) {
             setData(repoData);
+            setCurrentBranch(repoData.defaultBranch || 'main');
             try {
               const bRes = await listBranches(owner, repo, token).catch(() => ({ branches: [] } as ListBranchesBody));
               if (!cancelled) setBranchesList(bRes.branches || []);
@@ -240,7 +244,20 @@ git push -u origin main`}</pre>
                       <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Subir archivos</Button>
                     </div>
                   )}
-                  <FileBrowser owner={owner} repo={repo} defaultBranch={data.defaultBranch || 'main'} token={token || undefined} onEntriesLoaded={setLoadedEntries} onUploadClick={() => fileInputRef.current?.click()} refreshKey={refreshKey} />
+                  <FileBrowser
+                    owner={owner}
+                    repo={repo}
+                    defaultBranch={currentBranch || data.defaultBranch || 'main'}
+                    token={token || undefined}
+                    onEntriesLoaded={setLoadedEntries}
+                    onUploadClick={() => fileInputRef.current?.click()}
+                    refreshKey={refreshKey}
+                    branches={branchesList}
+                    onBranchChange={(branch) => {
+                      setCurrentBranch(branch);
+                      setRefreshKey(k => k + 1);
+                    }}
+                  />
                 </>
               )}
             </div>
@@ -253,7 +270,11 @@ git push -u origin main`}</pre>
           <BranchManager
             owner={owner}
             repo={repo}
-            defaultBranch={data.defaultBranch || 'main'}
+            defaultBranch={currentBranch || data.defaultBranch || 'main'}
+            onBranchChange={(branch) => {
+              setCurrentBranch(branch);
+              setRefreshKey(k => k + 1);
+            }}
           />
 
           {/* About */}
@@ -325,7 +346,7 @@ function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: strin
   );
 }
 
-function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded, onUploadClick, refreshKey }: { owner: string; repo: string; defaultBranch: string; token?: string; onEntriesLoaded?: (entries: DirectoryEntryDTO[] | null) => void; onUploadClick?: () => void; refreshKey?: number }) {
+function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded, onUploadClick, refreshKey, branches, onBranchChange }: { owner: string; repo: string; defaultBranch: string; token?: string; onEntriesLoaded?: (entries: DirectoryEntryDTO[] | null) => void; onUploadClick?: () => void; refreshKey?: number; branches?: BranchDTO[]; onBranchChange?: (branch: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<DirectoryEntryDTO[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -336,14 +357,14 @@ function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded, onUpl
       setLoading(true);
       setError(null);
       try {
-        const proxyUrl = `/api/repository/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
+        const proxyUrl = `/api/repository/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=&ref=${encodeURIComponent(defaultBranch)}`;
         const headers: Record<string, string> = { Accept: 'application/json' };
         if (token) headers.Authorization = `Bearer ${token}`;
 
         let resp = await fetch(proxyUrl, { method: 'GET', headers });
 
         if (resp.status === 404) {
-          const backendUrl = `${process.env.NEXT_PUBLIC_REPOSITORY_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=`;
+          const backendUrl = `${process.env.NEXT_PUBLIC_REPOSITORY_API_URL?.replace(/\/+$/,'') || 'http://localhost:8090'}/v1/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents?path=&ref=${encodeURIComponent(defaultBranch)}`;
           resp = await fetch(backendUrl, { method: 'GET', headers });
         }
 
@@ -390,6 +411,24 @@ function FileBrowser({ owner, repo, defaultBranch, token, onEntriesLoaded, onUpl
 
   return (
     <div className="mt-4">
+      {/* Branch selector */}
+      {branches && branches.length > 0 && (
+        <div className="flex items-center gap-2 mb-3">
+          <GitBranch className="h-4 w-4 text-muted-foreground" />
+          <select
+            value={defaultBranch}
+            onChange={(e) => onBranchChange?.(e.target.value)}
+            className="text-sm font-medium border rounded-md px-3 py-1.5 bg-background hover:bg-muted cursor-pointer"
+          >
+            {branches.map((b) => (
+              <option key={b.name} value={b.name}>
+                {b.name} {b.isDefault && '(default)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="border border-border rounded-md bg-card">
         <ul>
           {entries.map((e) => {
