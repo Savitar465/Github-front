@@ -121,7 +121,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
 
               <div className="mt-4 flex gap-2">
               <Button size="sm" asChild>
-                <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Crear archivo</a>
+                <a href={`/${owner}/${repo}/new/${currentBranch || data.defaultBranch || 'main'}`}>Crear archivo</a>
               </Button>
               <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={async (e) => {
                 const files = e.target.files;
@@ -135,7 +135,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
                     await uploadFile(owner, repo, f.name, token, {
                       content,
                       message: `Add ${f.name}`,
-                      branch: data.defaultBranch ?? 'main',
+                      branch: currentBranch || data.defaultBranch || 'main',
                     });
                   }
                   router.refresh();
@@ -173,7 +173,7 @@ export function RepoMetaClient({ owner, repo }: Props) {
               await uploadFile(owner, repo, f.name, token, {
                 content,
                 message: `Add ${f.name}`,
-                branch: data.defaultBranch ?? 'main',
+                branch: currentBranch || data.defaultBranch || 'main',
               });
             }
             // Forzar recarga del FileBrowser
@@ -226,7 +226,7 @@ git push -u origin main`}</pre>
                       <p className="text-sm text-muted-foreground">Empieza creando un nuevo archivo o subiendo un archivo existente.</p>
                       <div className="flex gap-2">
                         <Button size="sm" asChild>
-                          <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Crear archivo</a>
+                          <a href={`/${owner}/${repo}/new/${currentBranch || data.defaultBranch || 'main'}`}>Crear archivo</a>
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Subir archivos</Button>
                       </div>
@@ -239,7 +239,7 @@ git push -u origin main`}</pre>
                   {isAuthenticated && (
                     <div className="flex items-center justify-end gap-2 mb-3">
                       <Button size="sm" variant="outline" asChild>
-                        <a href={`/${owner}/${repo}/new/${data.defaultBranch ?? 'main'}`}>Crear archivo</a>
+                        <a href={`/${owner}/${repo}/new/${currentBranch || data.defaultBranch || 'main'}`}>Crear archivo</a>
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Subir archivos</Button>
                     </div>
@@ -306,22 +306,38 @@ git push -u origin main`}</pre>
 
 function CollaboratorsPanel({ owner, repo, token }: { owner: string; repo: string; token?: string }) {
   const [collaborators, setCollaborators] = useState<CollaboratorDTO[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      setLoading(true);
       try {
         const res = await listCollaborators(owner, repo, token).catch(() => ({ collaborators: [] } as ListCollaboratorsBody));
         if (!cancelled) setCollaborators(res.collaborators || []);
       } catch {
         if (!cancelled) setCollaborators([]);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
   }, [owner, repo, token]);
 
-  const show: CollaboratorDTO[] = collaborators.length > 0 ? collaborators : [{ username: 'octocat', avatarUrl: undefined, role: 'admin', userId: '0', addedAt: new Date().toISOString() }];
+  // If no collaborators found, show owner as default collaborator
+  const show: CollaboratorDTO[] = collaborators.length > 0
+    ? collaborators
+    : [{ username: owner, avatarUrl: undefined, role: 'admin', userId: '0', addedAt: new Date().toISOString() }];
+
+  if (loading) {
+    return (
+      <div>
+        <h5 className="text-sm font-semibold mb-3">Colaboradores</h5>
+        <div className="text-xs text-muted-foreground">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
