@@ -38,6 +38,27 @@ export function RepoMetaClient({ owner, repo }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Function to reload all data naturally without full page refresh
+  async function reloadData() {
+    setLoading(true);
+    try {
+      const repoData = token
+        ? await getRepository(owner, repo, token)
+        : await fetch(`/api/repository/v1/repos/${owner}/${repo}`).then(r => r.json()) as RepositoryDTO;
+
+      setData(repoData);
+      setCurrentBranch(repoData.defaultBranch || 'main');
+
+      const bRes = await listBranches(owner, repo, token || undefined).catch(() => ({ branches: [] } as ListBranchesBody));
+      setBranchesList(bRes.branches || []);
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error recargando datos');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function readFileAsBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -138,7 +159,8 @@ export function RepoMetaClient({ owner, repo }: Props) {
                       branch: currentBranch || data.defaultBranch || 'main',
                     });
                   }
-                  router.refresh();
+                  // Reload data naturally without full page refresh
+                  await reloadData();
                 } catch (err) {
                   console.error('Error uploading files:', err);
                   setError(err instanceof Error ? err.message : 'Error uploading files');
@@ -176,8 +198,8 @@ export function RepoMetaClient({ owner, repo }: Props) {
                 branch: currentBranch || data.defaultBranch || 'main',
               });
             }
-            // Forzar recarga del FileBrowser
-            setRefreshKey(k => k + 1);
+            // Reload data naturally without full page refresh
+            await reloadData();
           } catch (err) {
             console.error('Error uploading files:', err);
             setError(err instanceof Error ? err.message : 'Error uploading files');
