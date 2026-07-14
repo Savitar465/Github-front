@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     const issuesApi = process.env.NEXT_PUBLIC_ISSUES_API_URL || 'http://localhost:8085';
     const orgApi = process.env.NEXT_PUBLIC_ORG_API_URL || 'http://localhost:8085';
     const pullRequestApi = process.env.NEXT_PUBLIC_PR_API_URL || 'http://localhost:8082/api';
+    const classifierApi = process.env.NEXT_PUBLIC_CLASSIFIER_API_URL || 'http://localhost:8095';
+    const summarizerApi = process.env.NEXT_PUBLIC_SUMMARIZER_API_URL || 'http://localhost:8096';
 
     // eslint-disable-next-line no-console
     console.log('[REWRITE CONFIG] repoApi:', repoApi);
@@ -70,6 +72,14 @@ const nextConfig: NextConfig = {
       {
         source: '/api/pullrequest/:path*',
         destination: `${normalize(pullRequestApi)}/:path*`,
+      },
+      {
+        source: '/ai-classifier/:path*',
+        destination: `${normalize(classifierApi)}/:path*`,
+      },
+      {
+        source: '/ai-summarizer/:path*',
+        destination: `${normalize(summarizerApi)}/:path*`,
       },
     ];
   },

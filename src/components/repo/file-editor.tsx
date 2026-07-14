@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+
+import { buildDiffFromNewFile, summarizeDiff } from '@/lib/services/ai';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +46,24 @@ export function FileEditor({
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  // Sugerencia de mensaje de commit vía commit-summarizer-ms (editable)
+  const sugerirMensaje = useCallback(async () => {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const diff = buildDiffFromNewFile(filename.trim() || 'file', content);
+      const resumen = await summarizeDiff(diff);
+      if (resumen) setMessage(resumen);
+      else setAiError('El modelo no produjo un resumen; escribe el mensaje manualmente.');
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Servicio de IA no disponible');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [content, filename]);
 
   const handleSubmit = useCallback(async () => {
     setError('');
@@ -139,12 +159,24 @@ export function FileEditor({
         {/* Commit message */}
         <div className="space-y-2">
           <Label htmlFor="commit-message">Mensaje del commit</Label>
-          <Input
-            id="commit-message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={defaultMessage}
-          />
+          <div className="flex gap-2">
+            <Input
+              id="commit-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={defaultMessage}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={sugerirMensaje}
+              disabled={aiLoading || !content.trim() || !filename.trim()}
+              title="Genera un mensaje a partir de los cambios usando el modelo de IA"
+            >
+              {aiLoading ? 'Generando...' : '✨ Sugerir mensaje'}
+            </Button>
+          </div>
+          {aiError && <p className="text-xs text-destructive">{aiError}</p>}
           <p className="text-xs text-muted-foreground">
             Branch: <span className="font-mono">{branch}</span>
           </p>

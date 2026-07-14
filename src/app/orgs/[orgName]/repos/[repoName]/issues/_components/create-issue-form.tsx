@@ -5,8 +5,20 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { listLabels } from "@/lib/services/issues";
+import { classifyIssue, type ClassifyResult } from "@/lib/services/ai";
+import { createLabel, listLabels } from "@/lib/services/issues";
 import type { CreateIssuePayload, LabelDTO } from "@/types/issue";
+
+// Colores de las labels generadas por la IA (tipo:* y severidad:*)
+const AI_LABEL_COLORS: Record<string, string> = {
+  "tipo:bug": "#d73a4a",
+  "tipo:feature": "#0e8a16",
+  "tipo:question": "#a371f7",
+  "severidad:critica": "#b60205",
+  "severidad:alta": "#ff9500",
+  "severidad:media": "#fbca04",
+  "severidad:baja": "#0075ca",
+};
 
 type CreateIssueFormProps = {
   orgName: string;
@@ -29,6 +41,9 @@ export function CreateIssueForm({
   const [labelsOpen, setLabelsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<ClassifyResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     listLabels(orgName, repoName)
@@ -40,6 +55,47 @@ export function CreateIssueForm({
     setSelectedLabels((prev) =>
       prev.includes(name) ? prev.filter((l) => l !== name) : [...prev, name]
     );
+  }
+
+  async function sugerirConIA() {
+    if (!title.trim()) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      setAiResult(await classifyIssue(title.trim(), body.trim() || undefined));
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Servicio de IA no disponible");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  // issues-ms ignora labels inexistentes al crear el issue, por eso la label
+  // sugerida se crea primero si no existe en el repositorio.
+  async function asegurarLabel(name: string) {
+    if (availableLabels.some((l) => l.name === name)) return;
+    try {
+      const nueva = await createLabel(orgName, repoName, {
+        name,
+        color: AI_LABEL_COLORS[name] ?? "#8b949e",
+        description: "Sugerida por IA",
+      });
+      setAvailableLabels((prev) => [...prev, nueva]);
+    } catch {
+      // si ya existía (409) o falla, se continúa: la label puede existir igual
+    }
+  }
+
+  async function aplicarSugerencia() {
+    if (!aiResult) return;
+    const nombres = [`tipo:${aiResult.tipo}`, `severidad:${aiResult.severidad}`];
+    for (const nombre of nombres) {
+      await asegurarLabel(nombre);
+    }
+    setSelectedLabels((prev) => [
+      ...prev.filter((l) => !l.startsWith("tipo:") && !l.startsWith("severidad:")),
+      ...nombres,
+    ]);
   }
 
   async function handleSubmit(e: { preventDefault(): void }) {
@@ -108,6 +164,57 @@ export function CreateIssueForm({
               <span className="ml-auto">Markdown supported</span>
             </div>
           </div>
+        </div>
+
+        {/* Sugerencia de clasificación por IA */}
+        <div className="rounded-lg border border-border bg-muted/10 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              ✨ Clasificación asistida por IA
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={sugerirConIA}
+              disabled={aiLoading || !title.trim()}
+            >
+              {aiLoading ? "Analizando..." : "Sugerir tipo y severidad"}
+            </Button>
+          </div>
+
+          {aiError && <p className="mt-2 text-xs text-destructive">{aiError}</p>}
+
+          {aiResult && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${AI_LABEL_COLORS[`tipo:${aiResult.tipo}`]}33`,
+                  color: AI_LABEL_COLORS[`tipo:${aiResult.tipo}`],
+                }}
+              >
+                tipo: {aiResult.tipo}
+                {aiResult.confianza_tipo != null &&
+                  ` (${Math.round(aiResult.confianza_tipo * 100)}%)`}
+              </span>
+              <span
+                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${AI_LABEL_COLORS[`severidad:${aiResult.severidad}`]}33`,
+                  color: AI_LABEL_COLORS[`severidad:${aiResult.severidad}`],
+                }}
+              >
+                severidad: {aiResult.severidad}
+              </span>
+              <Button type="button" size="sm" variant="secondary" onClick={aplicarSugerencia}>
+                Aplicar como labels
+              </Button>
+              <span className="text-[10px] text-muted-foreground">
+                La sugerencia es editable: puedes quitar o cambiar las labels.
+              </span>
+            </div>
+          )}
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
